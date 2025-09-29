@@ -1,0 +1,714 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>在线SVG绘制工具</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#3B82F6',
+                        secondary: '#10B981',
+                        accent: '#8B5CF6',
+                        neutral: '#1F2937',
+                        'neutral-light': '#F3F4F6',
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'system-ui', 'sans-serif'],
+                    },
+                }
+            }
+        }
+    </script>
+    
+    <style type="text/tailwindcss">
+        @layer utilities {
+            .tool-btn {
+                @apply flex items-center justify-center w-10 h-10 rounded-lg transition-all duration-200 hover:bg-primary/10 active:bg-primary/20;
+            }
+            .tool-btn.active {
+                @apply bg-primary/20 text-primary;
+            }
+            .color-swatch {
+                @apply w-6 h-6 rounded-full cursor-pointer transition-transform duration-200 hover:scale-110 active:scale-90;
+            }
+            .input-control {
+                @apply px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary;
+            }
+        }
+    </style>
+</head>
+<body class="bg-gray-50 font-sans text-neutral">
+    <div class="flex flex-col h-screen overflow-hidden">
+        <!-- 顶部导航栏 -->
+        <header class="bg-white shadow-sm p-4 flex justify-between items-center">
+            <div class="flex items-center space-x-2">
+                <i class="fa fa-paint-brush text-primary text-2xl"></i>
+                <h1 class="text-xl font-bold">SVG绘制工具</h1>
+            </div>
+            <div class="flex space-x-3">
+                <button id="clearBtn" class="flex items-center space-x-1 px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors">
+                    <i class="fa fa-trash"></i>
+                    <span>清空画布</span>
+                </button>
+                <button id="downloadBtn" class="flex items-center space-x-1 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors">
+                    <i class="fa fa-download"></i>
+                    <span>下载SVG</span>
+                </button>
+            </div>
+        </header>
+        
+        <!-- 主要内容区 -->
+        <div class="flex flex-1 overflow-hidden">
+            <!-- 左侧工具栏 -->
+            <aside class="bg-white shadow-sm w-16 flex flex-col items-center py-4 space-y-4 border-r border-gray-200">
+                <button id="selectTool" class="tool-btn active" title="选择工具">
+                    <i class="fa fa-mouse-pointer text-lg"></i>
+                </button>
+                <button id="rectTool" class="tool-btn" title="矩形工具">
+                    <i class="fa fa-square-o text-lg"></i>
+                </button>
+                <button id="circleTool" class="tool-btn" title="圆形工具">
+                    <i class="fa fa-circle-o text-lg"></i>
+                </button>
+                <button id="lineTool" class="tool-btn" title="直线工具">
+                    <i class="fa fa-minus text-lg"></i>
+                </button>
+                <button id="textTool" class="tool-btn" title="文本工具">
+                    <i class="fa fa-font text-lg"></i>
+                </button>
+                
+                <div class="w-full border-t border-gray-200 my-2"></div>
+                
+                <div class="space-y-2">
+                    <p class="text-xs text-center text-gray-500 mb-1">填充色</p>
+                    <div id="fillColorSwatches" class="flex flex-wrap justify-center gap-1">
+                        <div class="color-swatch bg-white border border-gray-300" data-color="none"></div>
+                        <div class="color-swatch bg-black" data-color="black"></div>
+                        <div class="color-swatch bg-red-500" data-color="#ef4444"></div>
+                        <div class="color-swatch bg-blue-500" data-color="#3b82f6"></div>
+                        <div class="color-swatch bg-green-500" data-color="#10b981"></div>
+                        <div class="color-swatch bg-yellow-500" data-color="#f59e0b"></div>
+                    </div>
+                </div>
+                
+                <div class="space-y-2">
+                    <p class="text-xs text-center text-gray-500 mb-1">描边色</p>
+                    <div id="strokeColorSwatches" class="flex flex-wrap justify-center gap-1">
+                        <div class="color-swatch bg-white border border-gray-300" data-color="none"></div>
+                        <div class="color-swatch bg-black" data-color="black"></div>
+                        <div class="color-swatch bg-red-500" data-color="#ef4444"></div>
+                        <div class="color-swatch bg-blue-500" data-color="#3b82f6"></div>
+                        <div class="color-swatch bg-green-500" data-color="#10b981"></div>
+                        <div class="color-swatch bg-yellow-500" data-color="#f59e0b"></div>
+                    </div>
+                </div>
+            </aside>
+            
+            <!-- 右侧属性面板 -->
+            <aside class="bg-white shadow-sm w-64 border-l border-gray-200 p-4 hidden md:block overflow-y-auto">
+                <h3 class="font-semibold mb-4 pb-2 border-b border-gray-200">属性设置</h3>
+                
+                <div id="noSelection" class="text-gray-500 text-center py-8">
+                    未选择任何元素
+                </div>
+                
+                <div id="elementProperties" class="hidden space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">描边宽度</label>
+                        <input type="number" id="strokeWidth" min="0" max="20" value="1" class="input-control w-full">
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">填充颜色</label>
+                        <div class="flex items-center space-x-2">
+                            <div id="fillColorDisplay" class="w-6 h-6 rounded border border-gray-300" style="background-color: none;"></div>
+                            <input type="text" id="fillColorInput" class="input-control flex-1" placeholder="例如: #ff0000 或 none">
+                        </div>
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">描边颜色</label>
+                        <div class="flex items-center space-x-2">
+                            <div id="strokeColorDisplay" class="w-6 h-6 rounded border border-gray-300" style="background-color: black;"></div>
+                            <input type="text" id="strokeColorInput" class="input-control flex-1" placeholder="例如: #ff0000 或 none">
+                        </div>
+                    </div>
+                    
+                    <div id="textProperties" class="hidden">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">文本内容</label>
+                            <input type="text" id="textContent" class="input-control w-full">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">字体大小</label>
+                            <input type="number" id="fontSize" min="1" max="100" value="16" class="input-control w-full">
+                        </div>
+                    </div>
+                    
+                    <button id="deleteElement" class="w-full py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors flex items-center justify-center space-x-1">
+                        <i class="fa fa-trash"></i>
+                        <span>删除元素</span>
+                    </button>
+                </div>
+            </aside>
+            
+            <!-- 中央画布区域 -->
+            <main class="flex-1 overflow-auto bg-neutral-light p-8">
+                <div class="max-w-5xl mx-auto bg-white shadow-lg rounded-lg overflow-hidden relative">
+                    <!-- 画布容器 -->
+                    <div id="canvasContainer" class="relative cursor-crosshair" style="width: 100%; height: 600px; border: 1px dashed #ccc;">
+                        <!-- SVG 元素将在这里动态创建 -->
+                        <svg id="drawingCanvas" xmlns="http://www.w3.org/2000/svg" width="100%" height="100%" class="w-full h-full">
+                            <!-- 背景网格 -->
+                            <pattern id="grid" width="20" height="20" patternUnits="userSpaceOnUse">
+                                <path d="M 20 0 L 0 0 0 20" fill="none" stroke="#eee" stroke-width="0.5"/>
+                            </pattern>
+                            <rect width="100%" height="100%" fill="url(#grid)" />
+                            
+                            <!-- 绘制的元素将添加到这里 -->
+                            <g id="drawingLayer"></g>
+                        </svg>
+                        
+                        <!-- 临时绘制元素 -->
+                        <div id="tempDrawing" class="absolute pointer-events-none"></div>
+                    </div>
+                </div>
+            </main>
+        </div>
+        
+        <!-- 底部状态栏 -->
+        <footer class="bg-white border-t border-gray-200 p-2 text-sm text-gray-500 flex justify-between">
+            <div id="cursorPosition">位置: (0, 0)</div>
+            <div>提示: 选择工具后点击元素可编辑属性</div>
+        </footer>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // 获取DOM元素
+            const canvasContainer = document.getElementById('canvasContainer');
+            const drawingCanvas = document.getElementById('drawingCanvas');
+            const drawingLayer = document.getElementById('drawingLayer');
+            const tempDrawing = document.getElementById('tempDrawing');
+            const cursorPosition = document.getElementById('cursorPosition');
+            const clearBtn = document.getElementById('clearBtn');
+            const downloadBtn = document.getElementById('downloadBtn');
+            
+            // 工具按钮
+            const toolButtons = {
+                select: document.getElementById('selectTool'),
+                rect: document.getElementById('rectTool'),
+                circle: document.getElementById('circleTool'),
+                line: document.getElementById('lineTool'),
+                text: document.getElementById('textTool')
+            };
+            
+            // 属性面板元素
+            const noSelection = document.getElementById('noSelection');
+            const elementProperties = document.getElementById('elementProperties');
+            const strokeWidth = document.getElementById('strokeWidth');
+            const fillColorDisplay = document.getElementById('fillColorDisplay');
+            const fillColorInput = document.getElementById('fillColorInput');
+            const strokeColorDisplay = document.getElementById('strokeColorDisplay');
+            const strokeColorInput = document.getElementById('strokeColorInput');
+            const textProperties = document.getElementById('textProperties');
+            const textContent = document.getElementById('textContent');
+            const fontSize = document.getElementById('fontSize');
+            const deleteElement = document.getElementById('deleteElement');
+            
+            // 颜色选择器
+            const fillColorSwatches = document.querySelectorAll('#fillColorSwatches .color-swatch');
+            const strokeColorSwatches = document.querySelectorAll('#strokeColorSwatches .color-swatch');
+            
+            // 应用状态
+            let currentTool = 'select';
+            let isDrawing = false;
+            let startX = 0;
+            let startY = 0;
+            let currentElement = null;
+            let selectedElement = null;
+            let offsetX = 0;
+            let offsetY = 0;
+            let elementIdCounter = 1;
+            
+            // 默认样式
+            let currentStyles = {
+                fill: 'none',
+                stroke: 'black',
+                strokeWidth: 1
+            };
+            
+            // 切换工具
+            function setTool(tool) {
+                currentTool = tool;
+                
+                // 更新UI
+                Object.keys(toolButtons).forEach(key => {
+                    if (key === tool) {
+                        toolButtons[key].classList.add('active');
+                    } else {
+                        toolButtons[key].classList.remove('active');
+                    }
+                });
+                
+                // 取消选择
+                deselectElement();
+            }
+            
+            // 注册工具按钮事件
+            Object.keys(toolButtons).forEach(key => {
+                toolButtons[key].addEventListener('click', () => setTool(key));
+            });
+            
+            // 计算相对于画布的坐标
+            function getCanvasCoordinates(event) {
+                const rect = canvasContainer.getBoundingClientRect();
+                return {
+                    x: event.clientX - rect.left,
+                    y: event.clientY - rect.top
+                };
+            }
+            
+            // 更新鼠标位置显示
+            canvasContainer.addEventListener('mousemove', function(event) {
+                const coords = getCanvasCoordinates(event);
+                cursorPosition.textContent = `位置: (${Math.round(coords.x)}, ${Math.round(coords.y)})`;
+                
+                if (isDrawing && currentElement) {
+                    const currentCoords = getCanvasCoordinates(event);
+                    updateTempElement(currentCoords.x, currentCoords.y);
+                }
+            });
+            
+            // 开始绘制
+            canvasContainer.addEventListener('mousedown', function(event) {
+                if (event.button !== 0) return; // 只响应左键
+                
+                const coords = getCanvasCoordinates(event);
+                startX = coords.x;
+                startY = coords.y;
+                isDrawing = true;
+                
+                if (currentTool === 'select') {
+                    // 检查是否点击了某个元素
+                    const target = event.target.closest('[data-id]');
+                    if (target) {
+                        selectElement(target);
+                        
+                        // 计算偏移量，用于拖拽
+                        const bbox = target.getBBox();
+                        offsetX = startX - bbox.x;
+                        offsetY = startY - bbox.y;
+                        return;
+                    } else {
+                        deselectElement();
+                    }
+                }
+                
+                // 根据当前工具创建临时元素
+                createTempElement();
+            });
+            
+            // 结束绘制
+            canvasContainer.addEventListener('mouseup', function(event) {
+                if (!isDrawing) return;
+                
+                isDrawing = false;
+                
+                if (currentTool !== 'select' && currentElement) {
+                    const coords = getCanvasCoordinates(event);
+                    const element = finalizeElement(coords.x, coords.y);
+                    if (element) {
+                        drawingLayer.appendChild(element);
+                        selectElement(element);
+                    }
+                }
+                
+                // 清除临时元素
+                tempDrawing.innerHTML = '';
+                currentElement = null;
+            });
+            
+            // 鼠标离开画布时结束绘制
+            canvasContainer.addEventListener('mouseleave', function() {
+                if (isDrawing) {
+                    isDrawing = false;
+                    tempDrawing.innerHTML = '';
+                    currentElement = null;
+                }
+            });
+            
+            // 创建临时元素
+            function createTempElement() {
+                tempDrawing.innerHTML = '';
+                const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+                svg.setAttribute('width', '100%');
+                svg.setAttribute('height', '100%');
+                tempDrawing.appendChild(svg);
+                
+                switch(currentTool) {
+                    case 'rect':
+                        currentElement = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+                        currentElement.setAttribute('x', startX);
+                        currentElement.setAttribute('y', startY);
+                        currentElement.setAttribute('width', 0);
+                        currentElement.setAttribute('height', 0);
+                        break;
+                        
+                    case 'circle':
+                        currentElement = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+                        currentElement.setAttribute('cx', startX);
+                        currentElement.setAttribute('cy', startY);
+                        currentElement.setAttribute('r', 0);
+                        break;
+                        
+                    case 'line':
+                        currentElement = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+                        currentElement.setAttribute('x1', startX);
+                        currentElement.setAttribute('y1', startY);
+                        currentElement.setAttribute('x2', startX);
+                        currentElement.setAttribute('y2', startY);
+                        break;
+                        
+                    case 'text':
+                        // 文本工具直接创建最终元素
+                        currentElement = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+                        currentElement.setAttribute('x', startX);
+                        currentElement.setAttribute('y', startY);
+                        currentElement.textContent = '双击编辑文本';
+                        currentElement.setAttribute('font-size', 16);
+                        isDrawing = false;
+                        return currentElement;
+                }
+                
+                // 设置样式
+                applyStyles(currentElement);
+                svg.appendChild(currentElement);
+            }
+            
+            // 更新临时元素
+            function updateTempElement(x, y) {
+                if (!currentElement) return;
+                
+                switch(currentTool) {
+                    case 'rect':
+                        const rectX = Math.min(startX, x);
+                        const rectY = Math.min(startY, y);
+                        const rectWidth = Math.abs(x - startX);
+                        const rectHeight = Math.abs(y - startY);
+                        
+                        currentElement.setAttribute('x', rectX);
+                        currentElement.setAttribute('y', rectY);
+                        currentElement.setAttribute('width', rectWidth);
+                        currentElement.setAttribute('height', rectHeight);
+                        break;
+                        
+                    case 'circle':
+                        const radius = Math.sqrt(Math.pow(x - startX, 2) + Math.pow(y - startY, 2));
+                        currentElement.setAttribute('r', radius);
+                        break;
+                        
+                    case 'line':
+                        currentElement.setAttribute('x2', x);
+                        currentElement.setAttribute('y2', y);
+                        break;
+                }
+            }
+            
+            // 完成元素创建
+            function finalizeElement(x, y) {
+                // 创建正式元素
+                let element;
+                
+                switch(currentTool) {
+                    case 'rect':
+                        const rectX = Math.min(startX, x);
+                        const rectY = Math.min(startY, y);
+                        const rectWidth = Math.abs(x - startX);
+                        const rectHeight = Math.abs(y - startY);
+                        
+                        // 忽略太小的元素
+                        if (rectWidth < 5 || rectHeight < 5) return null;
+                        
+                        element = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+                        element.setAttribute('x', rectX);
+                        element.setAttribute('y', rectY);
+                        element.setAttribute('width', rectWidth);
+                        element.setAttribute('height', rectHeight);
+                        break;
+                        
+                    case 'circle':
+                        const radius = Math.sqrt(Math.pow(x - startX, 2) + Math.pow(y - startY, 2));
+                        
+                        // 忽略太小的元素
+                        if (radius < 3) return null;
+                        
+                        element = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+                        element.setAttribute('cx', startX);
+                        element.setAttribute('cy', startY);
+                        element.setAttribute('r', radius);
+                        break;
+                        
+                    case 'line':
+                        // 忽略太短的线
+                        if (Math.abs(x - startX) < 5 && Math.abs(y - startY) < 5) return null;
+                        
+                        element = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+                        element.setAttribute('x1', startX);
+                        element.setAttribute('y1', startY);
+                        element.setAttribute('x2', x);
+                        element.setAttribute('y2', y);
+                        break;
+                        
+                    case 'text':
+                        element = currentElement;
+                        break;
+                }
+                
+                // 设置唯一ID和样式
+                element.setAttribute('data-id', `elem-${elementIdCounter++}`);
+                applyStyles(element);
+                
+                // 添加事件监听
+                element.addEventListener('mousedown', function(event) {
+                    if (currentTool === 'select' && event.button === 0) {
+                        event.stopPropagation();
+                        selectElement(element);
+                        
+                        // 计算偏移量
+                        const bbox = element.getBBox();
+                        offsetX = getCanvasCoordinates(event).x - bbox.x;
+                        offsetY = getCanvasCoordinates(event).y - bbox.y;
+                    }
+                });
+                
+                // 文本元素双击编辑
+                if (currentTool === 'text') {
+                    element.addEventListener('dblclick', function() {
+                        const newText = prompt('编辑文本:', element.textContent);
+                        if (newText !== null) {
+                            element.textContent = newText;
+                            if (selectedElement === element) {
+                                textContent.value = newText;
+                            }
+                        }
+                    });
+                }
+                
+                return element;
+            }
+            
+            // 应用样式到元素
+            function applyStyles(element) {
+                element.setAttribute('fill', currentStyles.fill);
+                element.setAttribute('stroke', currentStyles.stroke);
+                element.setAttribute('stroke-width', currentStyles.strokeWidth);
+            }
+            
+            // 选择元素
+            function selectElement(element) {
+                // 取消之前的选择
+                deselectElement();
+                
+                selectedElement = element;
+                element.setAttribute('stroke-dasharray', '5,5');
+                
+                // 显示属性面板
+                noSelection.classList.add('hidden');
+                elementProperties.classList.remove('hidden');
+                
+                // 填充属性值
+                strokeWidth.value = element.getAttribute('stroke-width') || 1;
+                fillColorInput.value = element.getAttribute('fill') || 'none';
+                strokeColorInput.value = element.getAttribute('stroke') || 'none';
+                
+                // 更新颜色显示
+                fillColorDisplay.style.backgroundColor = fillColorInput.value === 'none' ? 'transparent' : fillColorInput.value;
+                strokeColorDisplay.style.backgroundColor = strokeColorInput.value === 'none' ? 'transparent' : strokeColorInput.value;
+                
+                // 显示文本属性（如果是文本元素）
+                if (element.tagName === 'text') {
+                    textProperties.classList.remove('hidden');
+                    textContent.value = element.textContent;
+                    fontSize.value = element.getAttribute('font-size') || 16;
+                } else {
+                    textProperties.classList.add('hidden');
+                }
+                
+                // 允许拖拽
+                document.addEventListener('mousemove', dragElement);
+            }
+            
+            // 取消选择
+            function deselectElement() {
+                if (selectedElement) {
+                    selectedElement.removeAttribute('stroke-dasharray');
+                    selectedElement = null;
+                    
+                    // 隐藏属性面板
+                    elementProperties.classList.add('hidden');
+                    noSelection.classList.remove('hidden');
+                    
+                    // 移除拖拽事件
+                    document.removeEventListener('mousemove', dragElement);
+                }
+            }
+            
+            // 拖拽元素
+            function dragElement(event) {
+                if (!selectedElement || currentTool !== 'select') return;
+                
+                const coords = getCanvasCoordinates(event);
+                const x = coords.x - offsetX;
+                const y = coords.y - offsetY;
+                
+                // 根据元素类型设置位置
+                switch(selectedElement.tagName) {
+                    case 'rect':
+                        selectedElement.setAttribute('x', x);
+                        selectedElement.setAttribute('y', y);
+                        break;
+                        
+                    case 'circle':
+                        selectedElement.setAttribute('cx', x);
+                        selectedElement.setAttribute('cy', y);
+                        break;
+                        
+                    case 'line':
+                        const dx = x - parseFloat(selectedElement.getAttribute('x1'));
+                        const dy = y - parseFloat(selectedElement.getAttribute('y1'));
+                        
+                        selectedElement.setAttribute('x1', x);
+                        selectedElement.setAttribute('y1', y);
+                        selectedElement.setAttribute('x2', parseFloat(selectedElement.getAttribute('x2')) + dx);
+                        selectedElement.setAttribute('y2', parseFloat(selectedElement.getAttribute('y2')) + dy);
+                        break;
+                        
+                    case 'text':
+                        selectedElement.setAttribute('x', x);
+                        selectedElement.setAttribute('y', y);
+                        break;
+                }
+            }
+            
+            // 注册颜色选择事件
+            fillColorSwatches.forEach(swatch => {
+                swatch.addEventListener('click', function() {
+                    const color = this.getAttribute('data-color');
+                    currentStyles.fill = color;
+                    fillColorInput.value = color;
+                    fillColorDisplay.style.backgroundColor = color === 'none' ? 'transparent' : color;
+                    
+                    // 更新选中元素
+                    if (selectedElement) {
+                        selectedElement.setAttribute('fill', color);
+                    }
+                });
+            });
+            
+            strokeColorSwatches.forEach(swatch => {
+                swatch.addEventListener('click', function() {
+                    const color = this.getAttribute('data-color');
+                    currentStyles.stroke = color;
+                    strokeColorInput.value = color;
+                    strokeColorDisplay.style.backgroundColor = color === 'none' ? 'transparent' : color;
+                    
+                    // 更新选中元素
+                    if (selectedElement) {
+                        selectedElement.setAttribute('stroke', color);
+                    }
+                });
+            });
+            
+            // 颜色输入框事件
+            fillColorInput.addEventListener('input', function() {
+                currentStyles.fill = this.value;
+                fillColorDisplay.style.backgroundColor = this.value === 'none' ? 'transparent' : this.value;
+                
+                if (selectedElement) {
+                    selectedElement.setAttribute('fill', this.value);
+                }
+            });
+            
+            strokeColorInput.addEventListener('input', function() {
+                currentStyles.stroke = this.value;
+                strokeColorDisplay.style.backgroundColor = this.value === 'none' ? 'transparent' : this.value;
+                
+                if (selectedElement) {
+                    selectedElement.setAttribute('stroke', this.value);
+                }
+            });
+            
+            // 描边宽度事件
+            strokeWidth.addEventListener('input', function() {
+                const width = Math.max(0, Math.min(20, parseInt(this.value) || 0));
+                this.value = width;
+                currentStyles.strokeWidth = width;
+                
+                if (selectedElement) {
+                    selectedElement.setAttribute('stroke-width', width);
+                }
+            });
+            
+            // 文本属性事件
+            textContent.addEventListener('input', function() {
+                if (selectedElement && selectedElement.tagName === 'text') {
+                    selectedElement.textContent = this.value;
+                }
+            });
+            
+            fontSize.addEventListener('input', function() {
+                const size = Math.max(1, Math.min(100, parseInt(this.value) || 16));
+                this.value = size;
+                
+                if (selectedElement && selectedElement.tagName === 'text') {
+                    selectedElement.setAttribute('font-size', size);
+                }
+            });
+            
+            // 删除元素
+            deleteElement.addEventListener('click', function() {
+                if (selectedElement) {
+                    drawingLayer.removeChild(selectedElement);
+                    deselectElement();
+                }
+            });
+            
+            // 清空画布
+            clearBtn.addEventListener('click', function() {
+                if (confirm('确定要清空画布吗？此操作不可撤销。')) {
+                    drawingLayer.innerHTML = '';
+                    deselectElement();
+                    elementIdCounter = 1;
+                }
+            });
+            
+            // 下载SVG
+            downloadBtn.addEventListener('click', function() {
+                // 创建完整的SVG
+                const svgData = new XMLSerializer().serializeToString(drawingCanvas);
+                const svgBlob = new Blob([svgData], {type: 'image/svg+xml;charset=utf-8'});
+                const svgUrl = URL.createObjectURL(svgBlob);
+                
+                // 创建下载链接
+                const downloadLink = document.createElement('a');
+                downloadLink.href = svgUrl;
+                downloadLink.download = 'drawing.svg';
+                document.body.appendChild(downloadLink);
+                downloadLink.click();
+                document.body.removeChild(downloadLink);
+                URL.revokeObjectURL(svgUrl);
+            });
+            
+            // 初始化
+            setTool('select');
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,667 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>在线视频视频格式化工具</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#3B82F6',
+                        secondary: '#10B981',
+                        accent: '#8B5CF6',
+                        danger: '#EF4444',
+                        neutral: '#1F2937',
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'system-ui', 'sans-serif'],
+                    },
+                }
+            }
+        }
+    </script>
+    
+    <style type="text/tailwindcss">
+        @layer utilities {
+            .btn-primary {
+                @apply bg-primary text-white px-4 py-2 rounded-lg hover:bg-primary/90 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-primary/50;
+            }
+            .btn-secondary {
+                @apply bg-white text-neutral border border-gray-300 px-4 py-2 rounded-lg hover:bg-gray-50 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-primary/30;
+            }
+            .input-control {
+                @apply w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all duration-200;
+            }
+            .card {
+                @apply bg-white rounded-xl shadow-sm border border-gray-100 p-6 transition-all duration-300 hover:shadow-md;
+            }
+            .upload-area {
+                @apply border-2 border-dashed border-gray-300 rounded-xl p-8 text-center transition-all duration-300 hover:border-primary/50;
+            }
+            .upload-area.active {
+                @apply border-primary bg-primary/5;
+            }
+            .format-badge {
+                @apply inline-block px-2 py-1 text-xs font-medium rounded-full bg-primary/10 text-primary;
+            }
+        }
+    </style>
+</head>
+<body class="bg-gray-50 font-sans text-neutral min-h-screen">
+    <!-- 顶部导航 -->
+    <header class="bg-white shadow-sm sticky top-0 z-50">
+        <div class="container mx-auto px-4 py-4 flex justify-between items-center">
+            <div class="flex items-center space-x-2">
+                <i class="fa fa-film text-primary text-2xl"></i>
+                <h1 class="text-xl font-bold">视频格式化工具</h1>
+            </div>
+            <nav>
+                <ul class="flex space-x-6">
+                    <li><a href="#" class="text-gray-600 hover:text-primary transition-colors"><i class="fa fa-question-circle mr-1"></i>帮助</a></li>
+                    <li><a href="#" class="text-gray-600 hover:text-primary transition-colors"><i class="fa fa-info-circle mr-1"></i>关于</a></li>
+                </ul>
+            </nav>
+        </div>
+    </header>
+
+    <!-- 主要内容区 -->
+    <main class="container mx-auto px-4 py-8">
+        <!-- 介绍部分 -->
+        <section class="mb-10 text-center max-w-3xl mx-auto">
+            <h2 class="text-[clamp(1.5rem,3vw,2.5rem)] font-bold mb-4">简单高效的视频格式转换</h2>
+            <p class="text-gray-600 text-lg">支持多种视频格式转换、分辨率调整、压缩等功能，满足您的各种需求</p>
+        </section>
+        
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <!-- 左侧：上传和预览区域 -->
+            <div class="lg:col-span-2">
+                <div class="card h-full">
+                    <h3 class="text-lg font-semibold mb-6 flex items-center">
+                        <i class="fa fa-upload text-primary mr-2"></i>上传视频文件
+                    </h3>
+                    
+                    <!-- 上传区域 -->
+                    <div id="uploadArea" class="upload-area mb-6">
+                        <input type="file" id="fileInput" accept="video/*" class="hidden">
+                        <label for="fileInput" class="cursor-pointer">
+                            <div class="flex flex-col items-center">
+                                <i class="fa fa-cloud-upload text-5xl text-gray-400 mb-4"></i>
+                                <p class="text-gray-600 mb-2">点击或拖放视频文件到此处</p>
+                                <p class="text-gray-400 text-sm">支持 MP4, AVI, MOV, WMV, FLV, WebM 等格式</p>
+                            </div>
+                        </label>
+                    </div>
+                    
+                    <!-- 已上传文件信息 -->
+                    <div id="fileList" class="hidden">
+                        <h4 class="font-medium mb-3">已选择文件</h4>
+                        <div id="selectedFile" class="flex items-center justify-between p-3 bg-gray-50 rounded-lg mb-4">
+                            <div class="flex items-center">
+                                <i class="fa fa-file-video-o text-primary mr-3 text-xl"></i>
+                                <div>
+                                    <p id="fileName" class="font-medium truncate max-w-md"></p>
+                                    <p id="fileInfo" class="text-sm text-gray-500"></p>
+                                </div>
+                            </div>
+                            <button id="removeFile" class="text-gray-400 hover:text-danger transition-colors">
+                                <i class="fa fa-times"></i>
+                            </button>
+                        </div>
+                        
+                        <!-- 视频预览 -->
+                        <div id="videoPreview" class="mt-6 hidden">
+                            <h4 class="font-medium mb-3">视频预览</h4>
+                            <div class="aspect-video bg-gray-100 rounded-lg overflow-hidden">
+                                <video id="videoPlayer" controls class="w-full h-full object-contain"></audio>
+                            </div>
+                            
+                            <!-- 视频信息 -->
+                            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4 text-sm">
+                                <div class="bg-gray-50 p-3 rounded-lg">
+                                    <p class="text-gray-500">分辨率</p>
+                                    <p id="videoResolution" class="font-medium">1920 × 1080</p>
+                                </div>
+                                <div class="bg-gray-50 p-3 rounded-lg">
+                                    <p class="text-gray-500">时长</p>
+                                    <p id="videoDuration" class="font-medium">01:23:45</p>
+                                </div>
+                                <div class="bg-gray-50 p-3 rounded-lg">
+                                    <p class="text-gray-500">帧率</p>
+                                    <p id="videoFps" class="font-medium">30 fps</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- 处理进度 -->
+                    <div id="processingArea" class="hidden">
+                        <h4 class="font-medium mb-3">正在处理...</h4>
+                        <div class="bg-gray-200 rounded-full h-2.5 mb-4">
+                            <div id="progressBar" class="bg-primary h-2.5 rounded-full" style="width: 0%"></div>
+                        </div>
+                        <p id="progressText" class="text-sm text-gray-500 text-center">准备开始处理...</p>
+                        
+                        <!-- 处理状态动画 -->
+                        <div class="flex justify-center mt-6">
+                            <div class="w-16 h-16 border-4 border-gray-200 border-t-primary rounded-full animate-spin"></div>
+                        </div>
+                    </div>
+                    
+                    <!-- 处理完成 -->
+                    <div id="resultArea" class="hidden">
+                        <div class="bg-green-50 border border-green-200 rounded-lg p-4 mb-6">
+                            <div class="flex items-start">
+                                <i class="fa fa-check-circle text-green-500 mt-1 mr-3"></i>
+                                <div>
+                                    <h4 class="font-medium text-green-800">处理完成！</h4>
+                                    <p class="text-green-700 text-sm">您的视频文件已成功转换</p>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="aspect-video bg-gray-100 rounded-lg overflow-hidden mb-6">
+                            <video id="resultVideoPlayer" controls class="w-full h-full object-contain"></audio>
+                        </div>
+                        
+                        <div class="flex flex-col sm:flex-row items-center justify-between gap-4">
+                            <div class="flex items-center">
+                                <i class="fa fa-file-video-o text-secondary mr-3 text-xl"></i>
+                                <div>
+                                    <p id="resultFileName" class="font-medium"></p>
+                                    <p id="resultFileInfo" class="text-sm text-gray-500"></p>
+                                </div>
+                            </div>
+                            <div class="flex gap-3">
+                                <button id="restartBtn" class="btn-secondary flex items-center">
+                                    <i class="fa fa-refresh mr-2"></i>
+                                    <span>重新转换</span>
+                                </button>
+                                <button id="downloadBtn" class="btn-primary flex items-center">
+                                    <i class="fa fa-download mr-2"></i>
+                                    <span>下载文件</span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 右侧：设置区域 -->
+            <div>
+                <div class="card sticky top-24">
+                    <h3 class="text-lg font-semibold mb-6 flex items-center">
+                        <i class="fa fa-cog text-primary mr-2"></i>转换设置
+                    </h3>
+                    
+                    <form id="formatSettings">
+                        <div class="mb-6">
+                            <label for="outputFormat" class="block text-sm font-medium text-gray-700 mb-2">输出格式</label>
+                            <select id="outputFormat" class="input-control">
+                                <option value="mp4">MP4 - 最常用格式</option>
+                                <option value="avi">AVI - 通用格式</option>
+                                <option value="mov">MOV - QuickTime格式</option>
+                                <option value="webm">WebM - 网页优化</option>
+                                <option value="flv">FLV - 流媒体格式</option>
+                            </select>
+                        </div>
+                        
+                        <div class="mb-6">
+                            <label for="resolution" class="block text-sm font-medium text-gray-700 mb-2">分辨率</label>
+                            <select id="resolution" class="input-control">
+                                <option value="original">原始分辨率</option>
+                                <option value="2160p">4K (2160p) - 3840×2160</option>
+                                <option value="1080p">全高清 (1080p) - 1920×1080</option>
+                                <option value="720p">高清 (720p) - 1280×720</option>
+                                <option value="480p">标清 (480p) - 854×480</option>
+                                <option value="360p">流畅 (360p) - 640×360</option>
+                                <option value="custom">自定义...</option>
+                            </select>
+                        </div>
+                        
+                        <!-- 自定义分辨率选项 (默认隐藏) -->
+                        <div id="customResolution" class="mb-6 hidden">
+                            <div class="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label for="customWidth" class="block text-sm font-medium text-gray-700 mb-2">宽度 (像素)</label>
+                                    <input type="number" id="customWidth" min="160" max="7680" value="1280" class="input-control">
+                                </div>
+                                <div>
+                                    <label for="customHeight" class="block text-sm font-medium text-gray-700 mb-2">高度 (像素)</label>
+                                    <input type="number" id="customHeight" min="90" max="4320" value="720" class="input-control">
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="mb-6">
+                            <label for="quality" class="block text-sm font-medium text-gray-700 mb-2">视频质量</label>
+                            <select id="quality" class="input-control">
+                                <option value="low">低质量 - 最小文件</option>
+                                <option value="medium" selected>中等质量 - 平衡</option>
+                                <option value="high">高质量 - 清晰画质</option>
+                                <option value="original">原始质量</option>
+                            </select>
+                        </div>
+                        
+                        <div class="mb-6">
+                            <label for="bitrate" class="block text-sm font-medium text-gray-700 mb-2">视频比特率</label>
+                            <select id="bitrate" class="input-control">
+                                <option value="500">500 kbps - 低</option>
+                                <option value="1000">1000 kbps - 中低</option>
+                                <option value="2500">2500 kbps - 中</option>
+                                <option value="5000">5000 kbps - 高</option>
+                                <option value="10000">10000 kbps - 很高</option>
+                                <option value="auto" selected>自动 - 根据质量</option>
+                            </select>
+                        </div>
+                        
+                        <div class="mb-6">
+                            <label class="block text-sm font-medium text-gray-700 mb-2">附加选项</label>
+                            <div class="space-y-3">
+                                <div class="flex items-center">
+                                    <input type="checkbox" id="removeAudio" class="w-4 h-4 text-primary rounded border-gray-300 focus:ring-primary">
+                                    <label for="removeAudio" class="ml-2 text-sm text-gray-700">移除音频轨道</label>
+                                </div>
+                                <div class="flex items-center">
+                                    <input type="checkbox" id="rotate90" class="w-4 h-4 text-primary rounded border-gray-300 focus:ring-primary">
+                                    <label for="rotate90" class="ml-2 text-sm text-gray-700">顺时针旋转90°</label>
+                                </div>
+                                <div class="flex items-center">
+                                    <input type="checkbox" id="compress" class="w-4 h-4 text-primary rounded border-gray-300 focus:ring-primary" checked>
+                                    <label for="compress" class="ml-2 text-sm text-gray-700">压缩视频大小</label>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <button type="button" id="convertBtn" class="btn-primary w-full flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed" disabled>
+                            <i class="fa fa-magic mr-2"></i>
+                            <span>开始转换</span>
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 支持的格式 -->
+        <section class="mt-16">
+            <h3 class="text-xl font-bold mb-6 text-center">支持的视频格式</h3>
+            <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-6">
+                <div class="card text-center">
+                    <i class="fa fa-film text-4xl text-primary mb-3"></i>
+                    <h4 class="font-semibold">MP4</h4>
+                    <p class="text-sm text-gray-500 mt-1">最通用格式</p>
+                </div>
+                <div class="card text-center">
+                    <i class="fa fa-video-camera text-4xl text-primary mb-3"></i>
+                    <h4 class="font-semibold">AVI</h4>
+                    <p class="text-sm text-gray-500 mt-1">传统视频格式</p>
+                </div>
+                <div class="card text-center">
+                    <i class="fa fa-apple text-4xl text-primary mb-3"></i>
+                    <h4 class="font-semibold">MOV</h4>
+                    <p class="text-sm text-gray-500 mt-1">QuickTime格式</p>
+                </div>
+                <div class="card text-center">
+                    <i class="fa fa-globe text-4xl text-primary mb-3"></i>
+                    <h4 class="font-semibold">WebM</h4>
+                    <p class="text-sm text-gray-500 mt-1">网页专用格式</p>
+                </div>
+                <div class="card text-center">
+                    <i class="fa fa-play-circle text-4xl text-primary mb-3"></i>
+                    <h4 class="font-semibold">FLV</h4>
+                    <p class="text-sm text-gray-500 mt-1">流媒体格式</p>
+                </div>
+                <div class="card text-center">
+                    <i class="fa fa-windows text-4xl text-primary mb-3"></i>
+                    <h4 class="font-semibold">WMV</h4>
+                    <p class="text-sm text-gray-500 mt-1">Windows格式</p>
+                </div>
+            </div>
+        </section>
+        
+        <!-- 功能特点 -->
+        <section class="mt-16">
+            <h3 class="text-xl font-bold mb-8 text-center">强大功能，简单操作</h3>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+                <div class="card">
+                    <div class="w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center mb-4">
+                        <i class="fa fa-exchange text-primary text-xl"></i>
+                    </div>
+                    <h4 class="font-semibold text-lg mb-2">多格式转换</h4>
+                    <p class="text-gray-600">支持几乎所有主流视频格式的相互转换，满足不同设备和场景的播放需求。</p>
+                </div>
+                <div class="card">
+                    <div class="w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center mb-4">
+                        <i class="fa fa-compress text-primary text-xl"></i>
+                    </div>
+                    <h4 class="font-semibold text-lg mb-2">视频压缩</h4>
+                    <p class="text-gray-600">智能压缩算法，在保持画质的同时显著减小文件体积，节省存储空间。</p>
+                </div>
+                <div class="card">
+                    <div class="w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center mb-4">
+                        <i class="fa fa-arrows-alt text-primary text-xl"></i>
+                    </div>
+                    <h4 class="font-semibold text-lg mb-2">分辨率调整</h4>
+                    <p class="text-gray-600">支持多种预设分辨率和自定义尺寸，适配不同屏幕和设备的显示需求。</p>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- 页脚 -->
+    <footer class="bg-white border-t border-gray-200 mt-16 py-8">
+        <div class="container mx-auto px-4">
+            <div class="flex flex-col md:flex-row justify-between items-center">
+                <div class="mb-4 md:mb-0">
+                    <p class="text-gray-500 text-sm">© 2023 视频格式化工具 - 免费在线视频处理服务</p>
+                </div>
+                <div class="flex space-x-6">
+                    <a href="#" class="text-gray-500 hover:text-primary transition-colors">隐私政策</a>
+                    <a href="#" class="text-gray-500 hover:text-primary transition-colors">使用条款</a>
+                    <a href="#" class="text-gray-500 hover:text-primary transition-colors">联系我们</a>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // 获取DOM元素
+            const uploadArea = document.getElementById('uploadArea');
+            const fileInput = document.getElementById('fileInput');
+            const fileList = document.getElementById('fileList');
+            const fileName = document.getElementById('fileName');
+            const fileInfo = document.getElementById('fileInfo');
+            const removeFile = document.getElementById('removeFile');
+            const videoPreview = document.getElementById('videoPreview');
+            const videoPlayer = document.getElementById('videoPlayer');
+            const videoResolution = document.getElementById('videoResolution');
+            const videoDuration = document.getElementById('videoDuration');
+            const videoFps = document.getElementById('videoFps');
+            const convertBtn = document.getElementById('convertBtn');
+            const processingArea = document.getElementById('processingArea');
+            const progressBar = document.getElementById('progressBar');
+            const progressText = document.getElementById('progressText');
+            const resultArea = document.getElementById('resultArea');
+            const resultFileName = document.getElementById('resultFileName');
+            const resultFileInfo = document.getElementById('resultFileInfo');
+            const resultVideoPlayer = document.getElementById('resultVideoPlayer');
+            const downloadBtn = document.getElementById('downloadBtn');
+            const restartBtn = document.getElementById('restartBtn');
+            const outputFormat = document.getElementById('outputFormat');
+            const resolution = document.getElementById('resolution');
+            const customResolution = document.getElementById('customResolution');
+            const quality = document.getElementById('quality');
+            const bitrate = document.getElementById('bitrate');
+            
+            let selectedFile = null;
+            let videoMetadata = {
+                width: 0,
+                height: 0,
+                duration: 0,
+                fps: 0
+            };
+            
+            // 格式化文件大小
+            function formatFileSize(bytes) {
+                if (bytes === 0) return '0 Bytes';
+                const k = 1024;
+                const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
+                const i = Math.floor(Math.log(bytes) / Math.log(k));
+                return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+            }
+            
+            // 格式化时长（秒 -> HH:MM:SS）
+            function formatDuration(seconds) {
+                const h = Math.floor(seconds / 3600);
+                const m = Math.floor((seconds % 3600) / 60);
+                const s = Math.floor(seconds % 60);
+                return [
+                    h.toString().padStart(2, '0'),
+                    m.toString().padStart(2, '0'),
+                    s.toString().padStart(2, '0')
+                ].join(':');
+            }
+            
+            // 处理文件选择
+            function handleFileSelection(file) {
+                if (!file) return;
+                
+                // 检查是否是视频文件
+                if (!file.type.startsWith('video/')) {
+                    alert('请选择视频文件！');
+                    return;
+                }
+                
+                selectedFile = file;
+                
+                // 显示文件信息
+                fileName.textContent = file.name;
+                fileInfo.textContent = `${formatFileSize(file.size)} · ${file.type}`;
+                fileList.classList.remove('hidden');
+                
+                // 显示视频预览
+                const objectUrl = URL.createObjectURL(file);
+                videoPlayer.src = objectUrl;
+                resultVideoPlayer.src = objectUrl; // 结果预览使用相同源（模拟）
+                videoPreview.classList.remove('hidden');
+                
+                // 获取视频元数据
+                videoPlayer.onloadedmetadata = function() {
+                    videoMetadata.width = this.videoWidth;
+                    videoMetadata.height = this.videoHeight;
+                    videoMetadata.duration = this.duration;
+                    videoMetadata.fps = 30; // 近似值，实际需要更复杂的计算
+                    
+                    // 更新视频信息显示
+                    videoResolution.textContent = `${videoMetadata.width} × ${videoMetadata.height}`;
+                    videoDuration.textContent = formatDuration(videoMetadata.duration);
+                    videoFps.textContent = `${videoMetadata.fps} fps`;
+                    
+                    // 更新自定义分辨率默认值
+                    document.getElementById('customWidth').value = videoMetadata.width;
+                    document.getElementById('customHeight').value = videoMetadata.height;
+                };
+                
+                // 启用转换按钮
+                convertBtn.disabled = false;
+            }
+            
+            // 上传区域点击事件
+            uploadArea.addEventListener('click', function() {
+                fileInput.click();
+            });
+            
+            // 文件选择事件
+            fileInput.addEventListener('change', function() {
+                if (this.files.length > 0) {
+                    handleFileSelection(this.files[0]);
+                }
+            });
+            
+            // 拖放功能
+            uploadArea.addEventListener('dragover', function(e) {
+                e.preventDefault();
+                uploadArea.classList.add('active');
+            });
+            
+            uploadArea.addEventListener('dragleave', function() {
+                uploadArea.classList.remove('active');
+            });
+            
+            uploadArea.addEventListener('drop', function(e) {
+                e.preventDefault();
+                uploadArea.classList.remove('active');
+                
+                if (e.dataTransfer.files.length > 0) {
+                    handleFileSelection(e.dataTransfer.files[0]);
+                }
+            });
+            
+            // 移除文件
+            removeFile.addEventListener('click', function() {
+                resetState();
+            });
+            
+            // 重置状态
+            function resetState() {
+                selectedFile = null;
+                fileInput.value = '';
+                fileList.classList.add('hidden');
+                videoPreview.classList.add('hidden');
+                videoPlayer.src = '';
+                resultVideoPlayer.src = '';
+                convertBtn.disabled = true;
+                
+                // 重置处理状态
+                processingArea.classList.add('hidden');
+                resultArea.classList.add('hidden');
+            }
+            
+            // 分辨率选择变化
+            resolution.addEventListener('change', function() {
+                if (this.value === 'custom') {
+                    customResolution.classList.remove('hidden');
+                } else {
+                    customResolution.classList.add('hidden');
+                }
+            });
+            
+            // 质量选择影响比特率选项
+            quality.addEventListener('change', function() {
+                if (this.value === 'original') {
+                    bitrate.value = 'auto';
+                    bitrate.disabled = true;
+                } else {
+                    bitrate.disabled = false;
+                    
+                    // 根据质量自动选择合适的比特率
+                    if (this.value === 'low') {
+                        bitrate.value = '500';
+                    } else if (this.value === 'medium') {
+                        bitrate.value = '2500';
+                    } else if (this.value === 'high') {
+                        bitrate.value = '10000';
+                    }
+                }
+            });
+            
+            // 开始转换
+            convertBtn.addEventListener('click', function() {
+                if (!selectedFile) return;
+                
+                // 隐藏其他区域，显示处理区域
+                fileList.classList.add('hidden');
+                resultArea.classList.add('hidden');
+                processingArea.classList.remove('hidden');
+                progressBar.style.width = '0%';
+                progressText.textContent = '开始处理文件...';
+                
+                // 模拟处理进度
+                let progress = 0;
+                const interval = setInterval(function() {
+                    // 模拟处理速度变化
+                    const step = progress < 30 ? Math.random() * 3 : 
+                                 progress < 70 ? Math.random() * 1.5 : 
+                                 Math.random() * 2.5;
+                    
+                    progress += step;
+                    
+                    if (progress >= 100) {
+                        progress = 100;
+                        clearInterval(interval);
+                        
+                        // 处理完成，显示结果
+                        setTimeout(function() {
+                            processingArea.classList.add('hidden');
+                            resultArea.classList.remove('hidden');
+                            
+                            // 生成结果文件名
+                            const originalName = selectedFile.name.replace(/\.[^/.]+$/, "");
+                            const resultName = `${originalName}.${outputFormat.value}`;
+                            resultFileName.textContent = resultName;
+                            
+                            // 计算估计的文件大小
+                            let qualityFactor = 0.7; // 默认因子
+                            
+                            if (quality.value === 'low') qualityFactor = 0.3;
+                            else if (quality.value === 'medium') qualityFactor = 0.7;
+                            else if (quality.value === 'high') qualityFactor = 1.2;
+                            else if (quality.value === 'original') qualityFactor = 1;
+                            
+                            // 根据分辨率调整因子
+                            if (resolution.value === '2160p') qualityFactor *= 2.5;
+                            else if (resolution.value === '1080p') qualityFactor *= 1;
+                            else if (resolution.value === '720p') qualityFactor *= 0.6;
+                            else if (resolution.value === '480p') qualityFactor *= 0.3;
+                            else if (resolution.value === '360p') qualityFactor *= 0.15;
+                            
+                            const estimatedSize = selectedFile.size * qualityFactor;
+                            
+                            // 获取输出分辨率文本
+                            let resText = '';
+                            switch(resolution.value) {
+                                case 'original': resText = `${videoMetadata.width}×${videoMetadata.height}`; break;
+                                case '2160p': resText = '3840×2160'; break;
+                                case '1080p': resText = '1920×1080'; break;
+                                case '720p': resText = '1280×720'; break;
+                                case '480p': resText = '854×480'; break;
+                                case '360p': resText = '640×360'; break;
+                                case 'custom': resText = `${document.getElementById('customWidth').value}×${document.getElementById('customHeight').value}`; break;
+                            }
+                            
+                            resultFileInfo.textContent = `${formatFileSize(estimatedSize)} · ${outputFormat.value.toUpperCase()} · ${resText}`;
+                        }, 800);
+                    }
+                    
+                    // 更新进度
+                    progressBar.style.width = `${progress}%`;
+                    
+                    // 更新进度文本
+                    if (progress < 20) {
+                        progressText.textContent = '正在解析视频文件...';
+                    } else if (progress < 40) {
+                        progressText.textContent = '正在解码视频流...';
+                    } else if (progress < 60) {
+                        progressText.textContent = '正在转换视频格式...';
+                    } else if (progress < 80) {
+                        progressText.textContent = '正在编码新视频...';
+                    } else if (progress < 95) {
+                        progressText.textContent = '正在优化视频质量...';
+                    } else {
+                        progressText.textContent = '准备完成...';
+                    }
+                }, 500);
+            });
+            
+            // 下载文件
+            downloadBtn.addEventListener('click', function() {
+                // 在实际应用中，这里会下载处理后的文件
+                // 这里使用原始文件作为模拟
+                if (selectedFile) {
+                    const originalName = selectedFile.name.replace(/\.[^/.]+$/, "");
+                    const resultName = `${originalName}.${outputFormat.value}`;
+                    
+                    const a = document.createElement('a');
+                    a.href = URL.createObjectURL(selectedFile);
+                    a.download = resultName;
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                }
+            });
+            
+            // 重新转换
+            restartBtn.addEventListener('click', function() {
+                resultArea.classList.add('hidden');
+                fileList.classList.remove('hidden');
+            });
+        });
+    </script>
+</body>
+</html>
+    

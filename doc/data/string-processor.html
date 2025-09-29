@@ -1,0 +1,450 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>字符串在线处理工具</title>
+    <!-- 引入Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- 引入Font Awesome -->
+    <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+    
+    <!-- Tailwind配置 -->
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#3B82F6',
+                        secondary: '#10B981',
+                        dark: '#1E293B',
+                        light: '#F8FAFC',
+                        accent: '#8B5CF6'
+                    },
+                    fontFamily: {
+                        inter: ['Inter', 'system-ui', 'sans-serif'],
+                    },
+                }
+            }
+        }
+    </script>
+    
+    <!-- 自定义工具类 -->
+    <style type="text/tailwindcss">
+        @layer utilities {
+            .content-auto {
+                content-visibility: auto;
+            }
+            .transition-custom {
+                transition: all 0.3s ease;
+            }
+            .shadow-custom {
+                box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+            }
+        }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-gray-50 to-gray-100 min-h-screen font-inter text-dark">
+    <!-- 导航栏 -->
+    <header class="bg-white/80 backdrop-blur-md shadow-sm sticky top-0 z-50 transition-all duration-300">
+        <div class="container mx-auto px-4 py-4 flex justify-between items-center">
+            <div class="flex items-center space-x-2">
+                <i class="fa fa-string text-primary text-2xl"></i>
+                <h1 class="text-xl md:text-2xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">字符串处理工具</h1>
+            </div>
+            <button id="theme-toggle" class="p-2 rounded-full hover:bg-gray-100 transition-custom">
+                <i class="fa fa-moon-o text-gray-600"></i>
+            </button>
+        </div>
+    </header>
+
+    <!-- 主内容区 -->
+    <main class="container mx-auto px-4 py-8 md:py-12">
+        <!-- 介绍部分 -->
+        <section class="text-center mb-10 max-w-3xl mx-auto">
+            <h2 class="text-[clamp(1.5rem,3vw,2.5rem)] font-bold mb-4">强大的在线字符串处理工具</h2>
+            <p class="text-gray-600 text-lg">轻松处理各种字符串操作，支持大小写转换、去除空格、字符计数等多种功能</p>
+        </section>
+
+        <!-- 字符串处理区域 -->
+        <section class="grid grid-cols-1 lg:grid-cols-2 gap-8 max-w-6xl mx-auto">
+            <!-- 输入区域 -->
+            <div class="bg-white rounded-xl shadow-custom p-6 transform hover:-translate-y-1 transition-custom">
+                <h3 class="text-xl font-semibold mb-4 flex items-center">
+                    <i class="fa fa-pencil-square-o text-primary mr-2"></i>输入字符串
+                </h3>
+                <div class="mb-4">
+                    <textarea 
+                        id="input-string" 
+                        class="w-full h-40 p-4 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary/50 focus:border-primary outline-none transition-custom resize-none"
+                        placeholder="请输入需要处理的字符串..."></textarea>
+                </div>
+                <div class="text-sm text-gray-500 mb-4">
+                    <span id="char-count">字符数: 0</span> | 
+                    <span id="word-count">单词数: 0</span> | 
+                    <span id="line-count">行数: 0</span>
+                </div>
+            </div>
+
+            <!-- 输出区域 -->
+            <div class="bg-white rounded-xl shadow-custom p-6 transform hover:-translate-y-1 transition-custom">
+                <h3 class="text-xl font-semibold mb-4 flex items-center">
+                    <i class="fa fa-output text-secondary mr-2"></i>处理结果
+                </h3>
+                <div class="mb-4">
+                    <textarea 
+                        id="output-string" 
+                        class="w-full h-40 p-4 border border-gray-200 rounded-lg bg-gray-50 focus:ring-2 focus:ring-secondary/50 focus:border-secondary outline-none transition-custom resize-none"
+                        placeholder="处理后的结果将显示在这里..." readonly></textarea>
+                </div>
+                <button 
+                    id="copy-result" 
+                    class="text-sm text-primary hover:text-primary/80 flex items-center transition-custom opacity-70 hover:opacity-100"
+                    disabled>
+                    <i class="fa fa-copy mr-1"></i> 复制结果
+                </button>
+            </div>
+        </section>
+
+        <!-- 功能按钮区域 -->
+        <section class="max-w-6xl mx-auto mt-8">
+            <h3 class="text-xl font-semibold mb-4 flex items-center">
+                <i class="fa fa-cogs text-accent mr-2"></i>字符串操作
+            </h3>
+            
+            <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
+                <!-- 大小写转换 -->
+                <button class="operation-btn bg-primary/10 hover:bg-primary/20 text-primary p-3 rounded-lg flex flex-col items-center transition-custom" data-operation="uppercase">
+                    <i class="fa fa-arrow-up text-lg mb-1"></i>
+                    <span class="text-sm">全部大写</span>
+                </button>
+                
+                <button class="operation-btn bg-primary/10 hover:bg-primary/20 text-primary p-3 rounded-lg flex flex-col items-center transition-custom" data-operation="lowercase">
+                    <i class="fa fa-arrow-down text-lg mb-1"></i>
+                    <span class="text-sm">全部小写</span>
+                </button>
+                
+                <button class="operation-btn bg-primary/10 hover:bg-primary/20 text-primary p-3 rounded-lg flex flex-col items-center transition-custom" data-operation="capitalize">
+                    <i class="fa fa-font text-lg mb-1"></i>
+                    <span class="text-sm">首字母大写</span>
+                </button>
+                
+                <!-- 空格处理 -->
+                <button class="operation-btn bg-secondary/10 hover:bg-secondary/20 text-secondary p-3 rounded-lg flex flex-col items-center transition-custom" data-operation="trim">
+                    <i class="fa fa-cut text-lg mb-1"></i>
+                    <span class="text-sm">去除首尾空格</span>
+                </button>
+                
+                <button class="operation-btn bg-secondary/10 hover:bg-secondary/20 text-secondary p-3 rounded-lg flex flex-col items-center transition-custom" data-operation="remove-all-spaces">
+                    <i class="fa fa-eraser text-lg mb-1"></i>
+                    <span class="text-sm">去除所有空格</span>
+                </button>
+                
+                <button class="operation-btn bg-secondary/10 hover:bg-secondary/20 text-secondary p-3 rounded-lg flex flex-col items-center transition-custom" data-operation="single-space">
+                    <i class="fa fa-compress text-lg mb-1"></i>
+                    <span class="text-sm">合并空格</span>
+                </button>
+                
+                <!-- 文本转换 -->
+                <button class="operation-btn bg-accent/10 hover:bg-accent/20 text-accent p-3 rounded-lg flex flex-col items-center transition-custom" data-operation="reverse">
+                    <i class="fa fa-exchange text-lg mb-1"></i>
+                    <span class="text-sm">反转字符串</span>
+                </button>
+                
+                <button class="operation-btn bg-accent/10 hover:bg-accent/20 text-accent p-3 rounded-lg flex flex-col items-center transition-custom" data-operation="strip-html">
+                    <i class="fa fa-code text-lg mb-1"></i>
+                    <span class="text-sm">去除HTML标签</span>
+                </button>
+                
+                <button class="operation-btn bg-accent/10 hover:bg-accent/20 text-accent p-3 rounded-lg flex flex-col items-center transition-custom" data-operation="escape-html">
+                    <i class="fa fa-shield text-lg mb-1"></i>
+                    <span class="text-sm">转义HTML</span>
+                </button>
+                
+                <!-- 其他操作 -->
+                <button class="operation-btn bg-gray-100 hover:bg-gray-200 text-gray-700 p-3 rounded-lg flex flex-col items-center transition-custom" data-operation="count-chars">
+                    <i class="fa fa-hashtag text-lg mb-1"></i>
+                    <span class="text-sm">字符统计</span>
+                </button>
+                
+                <button class="operation-btn bg-gray-100 hover:bg-gray-200 text-gray-700 p-3 rounded-lg flex flex-col items-center transition-custom" data-operation="random-case">
+                    <i class="fa fa-random text-lg mb-1"></i>
+                    <span class="text-sm">随机大小写</span>
+                </button>
+                
+                <button class="operation-btn bg-gray-100 hover:bg-gray-200 text-gray-700 p-3 rounded-lg flex flex-col items-center transition-custom" data-operation="clear">
+                    <i class="fa fa-trash text-lg mb-1"></i>
+                    <span class="text-sm">清空</span>
+                </button>
+            </div>
+        </section>
+        
+        <!-- 历史记录 -->
+        <section class="max-w-6xl mx-auto mt-12">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-xl font-semibold flex items-center">
+                    <i class="fa fa-history text-gray-500 mr-2"></i>操作历史
+                </h3>
+                <button id="clear-history" class="text-sm text-gray-500 hover:text-gray-700 transition-custom">
+                    清空历史
+                </button>
+            </div>
+            
+            <div id="history-list" class="bg-white rounded-xl shadow-custom p-4 max-h-40 overflow-y-auto">
+                <p class="text-gray-400 text-center py-8">暂无操作历史</p>
+            </div>
+        </section>
+    </main>
+
+    <!-- 通知提示 -->
+    <div id="notification" class="fixed bottom-4 right-4 bg-dark text-white px-4 py-3 rounded-lg shadow-lg transform translate-y-20 opacity-0 transition-all duration-300 flex items-center">
+        <i class="fa fa-check-circle mr-2"></i>
+        <span id="notification-text">操作成功</span>
+    </div>
+
+    <!-- 页脚 -->
+    <footer class="bg-white/80 backdrop-blur-md mt-16 py-6 border-t">
+        <div class="container mx-auto px-4 text-center text-gray-500 text-sm">
+            <p>© 2023 字符串在线处理工具 | 一个简单实用的字符串处理工具</p>
+        </div>
+    </footer>
+
+    <!-- JavaScript -->
+    <script>
+        // DOM元素
+        const inputString = document.getElementById('input-string');
+        const outputString = document.getElementById('output-string');
+        const charCount = document.getElementById('char-count');
+        const wordCount = document.getElementById('word-count');
+        const lineCount = document.getElementById('line-count');
+        const copyResultBtn = document.getElementById('copy-result');
+        const operationBtns = document.querySelectorAll('.operation-btn');
+        const historyList = document.getElementById('history-list');
+        const clearHistoryBtn = document.getElementById('clear-history');
+        const notification = document.getElementById('notification');
+        const notificationText = document.getElementById('notification');
+        const themeToggle = document.getElementById('theme-toggle');
+        
+        // 初始化历史记录
+        let history = JSON.parse(localStorage.getItem('stringProcessorHistory') || '[]');
+        updateHistoryDisplay();
+        
+        // 更新统计信息
+        function updateStats() {
+            const text = inputString.value;
+            
+            // 字符数
+            const chars = text.length;
+            charCount.textContent = `字符数: ${chars}`;
+            
+            // 单词数（简单处理，按空格分割）
+            const words = text.trim() === '' ? 0 : text.trim().split(/\s+/).length;
+            wordCount.textContent = `单词数: ${words}`;
+            
+            // 行数
+            const lines = text === '' ? 0 : text.split('\n').length;
+            lineCount.textContent = `行数: ${lines}`;
+            
+            // 启用/禁用复制按钮
+            copyResultBtn.disabled = outputString.value === '';
+            copyResultBtn.style.opacity = outputString.value === '' ? '0.7' : '1';
+        }
+        
+        // 字符串处理函数
+        const stringOperations = {
+            // 大小写转换
+            uppercase: (str) => str.toUpperCase(),
+            lowercase: (str) => str.toLowerCase(),
+            capitalize: (str) => str.replace(/\b\w/g, c => c.toUpperCase()),
+            
+            // 空格处理
+            trim: (str) => str.trim(),
+            'remove-all-spaces': (str) => str.replace(/\s+/g, ''),
+            'single-space': (str) => str.trim().replace(/\s+/g, ' '),
+            
+            // 文本转换
+            reverse: (str) => str.split('').reverse().join(''),
+            'strip-html': (str) => str.replace(/<[^>]*>?/gm, ''),
+            'escape-html': (str) => str
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#039;'),
+            
+            // 其他操作
+            'count-chars': (str) => {
+                const counts = {};
+                for (const char of str) {
+                    counts[char] = (counts[char] || 0) + 1;
+                }
+                return Object.entries(counts)
+                    .map(([char, count]) => `${char}: ${count}`)
+                    .join('\n');
+            },
+            'random-case': (str) => str.split('').map(c => 
+                Math.random() > 0.5 ? c.toUpperCase() : c.toLowerCase()
+            ).join(''),
+            clear: () => ''
+        };
+        
+        // 执行操作
+        function performOperation(operation) {
+            const input = inputString.value;
+            
+            if (operation === 'clear') {
+                inputString.value = '';
+                outputString.value = '';
+                showNotification('已清空内容');
+            } else if (input.trim() === '') {
+                showNotification('请先输入字符串', 'warning');
+                return;
+            } else {
+                const result = stringOperations[operation](input);
+                outputString.value = result;
+                
+                // 添加到历史记录
+                addToHistory(operation, input, result);
+                
+                showNotification('操作完成');
+            }
+            
+            updateStats();
+        }
+        
+        // 添加到历史记录
+        function addToHistory(operation, input, result) {
+            const operationNames = {
+                'uppercase': '全部大写',
+                'lowercase': '全部小写',
+                'capitalize': '首字母大写',
+                'trim': '去除首尾空格',
+                'remove-all-spaces': '去除所有空格',
+                'single-space': '合并空格',
+                'reverse': '反转字符串',
+                'strip-html': '去除HTML标签',
+                'escape-html': '转义HTML',
+                'count-chars': '字符统计',
+                'random-case': '随机大小写',
+                'clear': '清空'
+            };
+            
+            const historyItem = {
+                id: Date.now(),
+                operation: operationNames[operation] || operation,
+                timestamp: new Date().toLocaleString(),
+                input: input.substring(0, 30) + (input.length > 30 ? '...' : ''),
+                result: result.substring(0, 30) + (result.length > 30 ? '...' : '')
+            };
+            
+            history.unshift(historyItem);
+            if (history.length > 10) {
+                history = history.slice(0, 10);
+            }
+            
+            localStorage.setItem('stringProcessorHistory', JSON.stringify(history));
+            updateHistoryDisplay();
+        }
+        
+        // 更新历史记录显示
+        function updateHistoryDisplay() {
+            if (history.length === 0) {
+                historyList.innerHTML = '<p class="text-gray-400 text-center py-8">暂无操作历史</p>';
+                return;
+            }
+            
+            historyList.innerHTML = '';
+            history.forEach(item => {
+                const historyItem = document.createElement('div');
+                historyItem.className = 'p-3 border-b border-gray-100 last:border-0 hover:bg-gray-50 rounded transition-custom';
+                historyItem.innerHTML = `
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <span class="font-medium text-sm">${item.operation}</span>
+                            <p class="text-xs text-gray-500 mt-1">输入: ${item.input}</p>
+                            <p class="text-xs text-gray-500">结果: ${item.result}</p>
+                        </div>
+                        <span class="text-xs text-gray-400">${item.timestamp}</span>
+                    </div>
+                `;
+                historyList.appendChild(historyItem);
+            });
+        }
+        
+        // 清空历史记录
+        function clearHistory() {
+            history = [];
+            localStorage.removeItem('stringProcessorHistory');
+            updateHistoryDisplay();
+            showNotification('历史记录已清空');
+        }
+        
+        // 复制结果
+        function copyResult() {
+            if (outputString.value === '') return;
+            
+            outputString.select();
+            document.execCommand('copy');
+            
+            showNotification('结果已复制到剪贴板');
+        }
+        
+        // 显示通知
+        function showNotification(message, type = 'success') {
+            notificationText.textContent = message;
+            
+            // 设置通知类型样式
+            notification.className = 'fixed bottom-4 right-4 px-4 py-3 rounded-lg shadow-lg transform translate-y-20 opacity-0 transition-all duration-300 flex items-center';
+            
+            if (type === 'success') {
+                notification.classList.add('bg-green-600', 'text-white');
+                notification.innerHTML = `<i class="fa fa-check-circle mr-2"></i><span>${message}</span>`;
+            } else if (type === 'warning') {
+                notification.classList.add('bg-yellow-500', 'text-white');
+                notification.innerHTML = `<i class="fa fa-exclamation-triangle mr-2"></i><span>${message}</span>`;
+            }
+            
+            // 显示通知
+            setTimeout(() => {
+                notification.classList.remove('translate-y-20', 'opacity-0');
+            }, 10);
+            
+            // 3秒后隐藏通知
+            setTimeout(() => {
+                notification.classList.add('translate-y-20', 'opacity-0');
+            }, 3000);
+        }
+        
+        // 切换主题
+        function toggleTheme() {
+            const isDark = document.body.classList.toggle('dark-mode');
+            
+            if (isDark) {
+                document.body.classList.add('bg-gray-900', 'text-white');
+                document.body.classList.remove('bg-gradient-to-br', 'from-gray-50', 'to-gray-100', 'text-dark');
+                themeToggle.innerHTML = '<i class="fa fa-sun-o text-yellow-400"></i>';
+            } else {
+                document.body.classList.remove('bg-gray-900', 'text-white');
+                document.body.classList.add('bg-gradient-to-br', 'from-gray-50', 'to-gray-100', 'text-dark');
+                themeToggle.innerHTML = '<i class="fa fa-moon-o text-gray-600"></i>';
+            }
+        }
+        
+        // 事件监听
+        inputString.addEventListener('input', updateStats);
+        copyResultBtn.addEventListener('click', copyResult);
+        clearHistoryBtn.addEventListener('click', clearHistory);
+        themeToggle.addEventListener('click', toggleTheme);
+        
+        operationBtns.forEach(btn => {
+            btn.addEventListener('click', () => {
+                const operation = btn.getAttribute('data-operation');
+                performOperation(operation);
+            });
+        });
+        
+        // 初始化
+        updateStats();
+    </script>
+</body>
+</html>

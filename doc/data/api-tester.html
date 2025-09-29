@@ -1,0 +1,1255 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>API测试工具 - 类似Postman的HTTP请求测试工具</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.8/dist/chart.umd.min.js"></script>
+    
+    <!-- 配置Tailwind -->
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#FF6C37',
+                        secondary: '#2563EB',
+                        success: '#10B981',
+                        danger: '#EF4444',
+                        dark: '#1E293B',
+                        light: '#F8FAFC',
+                        'method-get': '#10B981',
+                        'method-post': '#3B82F6',
+                        'method-put': '#F59E0B',
+                        'method-delete': '#EF4444',
+                        'method-patch': '#8B5CF6',
+                        'method-head': '#6366F1',
+                        'method-options': '#06B6D4'
+                    },
+                    fontFamily: {
+                        inter: ['Inter', 'system-ui', 'sans-serif'],
+                        mono: ['Consolas', 'Monaco', 'Courier New', 'monospace']
+                    },
+                }
+            }
+        }
+    </script>
+    
+    <style type="text/tailwindcss">
+        @layer utilities {
+            .content-auto {
+                content-visibility: auto;
+            }
+            .sidebar-shadow {
+                box-shadow: 0 0 20px rgba(0, 0, 0, 0.05);
+            }
+            .panel-shadow {
+                box-shadow: 0 2px 10px rgba(0, 0, 0, 0.07);
+            }
+            .transition-height {
+                transition: max-height 0.3s ease-in-out;
+            }
+            .tab-active {
+                @apply border-primary text-primary font-medium;
+            }
+            .json-key { color: #0066CC; }
+            .json-string { color: #008000; }
+            .json-number { color: #FF4500; }
+            .json-boolean { color: #800080; }
+            .json-null { color: #808080; }
+        }
+    </style>
+</head>
+<body class="font-inter bg-gray-50 text-dark min-h-screen flex flex-col overflow-hidden">
+    <!-- 顶部导航 -->
+    <header class="bg-white border-b border-gray-200 py-3 px-4 shadow-sm z-10">
+        <div class="container mx-auto flex justify-between items-center">
+            <div class="flex items-center">
+                <i class="fa-solid fa-rocket text-primary text-2xl mr-3"></i>
+                <h1 class="text-xl font-bold">API测试工具</h1>
+            </div>
+            <div class="flex items-center space-x-3">
+                <button id="save-request-btn" class="flex items-center px-3 py-1.5 text-sm text-gray-700 hover:text-primary transition-colors">
+                    <i class="fa-solid fa-save mr-1.5"></i>
+                    <span class="hidden sm:inline">保存请求</span>
+                </button>
+                <button id="import-btn" class="flex items-center px-3 py-1.5 text-sm text-gray-700 hover:text-primary transition-colors">
+                    <i class="fa-solid fa-file-import mr-1.5"></i>
+                    <span class="hidden sm:inline">导入</span>
+                </button>
+                <button id="export-btn" class="flex items-center px-3 py-1.5 text-sm text-gray-700 hover:text-primary transition-colors">
+                    <i class="fa-solid fa-file-export mr-1.5"></i>
+                    <span class="hidden sm:inline">导出</span>
+                </button>
+                <button id="theme-toggle" class="p-2 rounded-full hover:bg-gray-100 transition-colors">
+                    <i class="fa-solid fa-moon text-gray-600"></i>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- 主内容区 -->
+    <main class="flex-grow flex overflow-hidden">
+        <!-- 左侧边栏 - 历史和收藏 -->
+        <aside class="w-64 bg-white border-r border-gray-200 sidebar-shadow flex-shrink-0 hidden md:block overflow-hidden flex flex-col">
+            <div class="p-3 border-b border-gray-200">
+                <div class="relative">
+                    <input type="text" placeholder="搜索请求..." class="w-full pl-9 pr-3 py-1.5 text-sm bg-gray-50 rounded-md focus:outline-none focus:ring-1 focus:ring-primary">
+                    <i class="fa-solid fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 text-sm"></i>
+                </div>
+            </div>
+            
+            <div class="flex-shrink-0 border-b border-gray-200">
+                <div class="flex">
+                    <button id="collections-tab" class="flex-1 py-2 px-4 text-sm border-b-2 tab-active">
+                        <i class="fa-solid fa-folder mr-2"></i>集合
+                    </button>
+                    <button id="history-tab" class="flex-1 py-2 px-4 text-sm border-b-2 border-transparent text-gray-600 hover:text-gray-900">
+                        <i class="fa-solid fa-history mr-2"></i>历史
+                    </button>
+                </div>
+            </div>
+            
+            <!-- 集合列表 -->
+            <div id="collections-panel" class="flex-grow overflow-y-auto p-2">
+                <div class="mb-2">
+                    <button class="w-full flex items-center justify-between p-2 text-sm hover:bg-gray-50 rounded-md transition-colors">
+                        <div class="flex items-center">
+                            <i class="fa-solid fa-plus-circle text-primary mr-2"></i>
+                            <span>新建集合</span>
+                        </div>
+                    </button>
+                </div>
+                
+                <div class="mb-1">
+                    <div class="flex items-center justify-between p-2 text-sm font-medium">
+                        <div class="flex items-center">
+                            <i class="fa-solid fa-folder text-gray-500 mr-2"></i>
+                            <span>示例集合</span>
+                        </div>
+                        <button class="text-gray-400 hover:text-gray-600">
+                            <i class="fa-solid fa-ellipsis-v text-xs"></i>
+                        </button>
+                    </div>
+                    
+                    <div class="ml-6 space-y-1">
+                        <button class="w-full flex items-center p-2 text-sm rounded-md hover:bg-gray-50 transition-colors text-left">
+                            <span class="inline-flex items-center justify-center w-5 h-5 rounded text-[10px] text-white bg-method-get mr-2">GET</span>
+                            <span class="truncate">获取用户列表</span>
+                        </button>
+                        <button class="w-full flex items-center p-2 text-sm rounded-md hover:bg-gray-50 transition-colors text-left">
+                            <span class="inline-flex items-center justify-center w-5 h-5 rounded text-[10px] text-white bg-method-post mr-2">POST</span>
+                            <span class="truncate">创建用户</span>
+                        </button>
+                        <button class="w-full flex items-center p-2 text-sm rounded-md hover:bg-gray-50 transition-colors text-left">
+                            <span class="inline-flex items-center justify-center w-5 h-5 rounded text-[10px] text-white bg-method-put mr-2">PUT</span>
+                            <span class="truncate">更新用户信息</span>
+                        </button>
+                        <button class="w-full flex items-center p-2 text-sm rounded-md hover:bg-gray-50 transition-colors text-left">
+                            <span class="inline-flex items-center justify-center w-5 h-5 rounded text-[10px] text-white bg-method-delete mr-2">DEL</span>
+                            <span class="truncate">删除用户</span>
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="mb-1">
+                    <div class="flex items-center justify-between p-2 text-sm font-medium">
+                        <div class="flex items-center">
+                            <i class="fa-solid fa-folder text-gray-500 mr-2"></i>
+                            <span>项目API</span>
+                        </div>
+                        <button class="text-gray-400 hover:text-gray-600">
+                            <i class="fa-solid fa-ellipsis-v text-xs"></i>
+                        </button>
+                    </div>
+                    
+                    <div class="ml-6 space-y-1">
+                        <button class="w-full flex items-center p-2 text-sm rounded-md hover:bg-gray-50 transition-colors text-left">
+                            <span class="inline-flex items-center justify-center w-5 h-5 rounded text-[10px] text-white bg-method-get mr-2">GET</span>
+                            <span class="truncate">获取产品列表</span>
+                        </button>
+                        <button class="w-full flex items-center p-2 text-sm rounded-md hover:bg-gray-50 transition-colors text-left">
+                            <span class="inline-flex items-center justify-center w-5 h-5 rounded text-[10px] text-white bg-method-post mr-2">POST</span>
+                            <span class="truncate">提交订单</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 历史记录面板 (默认隐藏) -->
+            <div id="history-panel" class="flex-grow overflow-y-auto p-2 hidden">
+                <div class="p-4 text-center text-gray-500 text-sm">
+                    <i class="fa-solid fa-clock-rotate-left text-2xl mb-2 block"></i>
+                    <p>您的请求历史将显示在这里</p>
+                </div>
+            </div>
+            
+            <div class="p-3 border-t border-gray-200">
+                <button id="new-request-btn" class="w-full py-2 bg-primary text-white rounded-md hover:bg-primary/90 transition-colors text-sm flex items-center justify-center">
+                    <i class="fa-solid fa-plus mr-2"></i>
+                    新建请求
+                </button>
+            </div>
+        </aside>
+
+        <!-- 主请求区域 -->
+        <div class="flex-grow flex flex-col overflow-hidden">
+            <!-- 请求设置 -->
+            <div class="bg-white border-b border-gray-200 p-3 flex-shrink-0">
+                <div class="flex flex-wrap items-center gap-2">
+                    <!-- HTTP方法选择器 -->
+                    <div class="relative">
+                        <select id="method-select" class="appearance-none bg-gray-50 border border-gray-200 rounded-l-md py-2 pl-3 pr-8 text-sm focus:outline-none focus:ring-1 focus:ring-primary">
+                            <option value="GET">GET</option>
+                            <option value="POST">POST</option>
+                            <option value="PUT">PUT</option>
+                            <option value="DELETE">DELETE</option>
+                            <option value="PATCH">PATCH</option>
+                            <option value="HEAD">HEAD</option>
+                            <option value="OPTIONS">OPTIONS</option>
+                        </select>
+                        <i class="fa-solid fa-chevron-down absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 text-xs pointer-events-none"></i>
+                    </div>
+                    
+                    <!-- URL输入框 -->
+                    <div class="flex-grow min-w-[200px]">
+                        <div class="relative">
+                            <input type="text" id="url-input" placeholder="输入URL地址..." 
+                                class="w-full py-2 pl-3 pr-32 bg-gray-50 border-y border-gray-200 text-sm focus:outline-none focus:ring-1 focus:ring-primary">
+                            <div class="absolute right-2 top-1/2 transform -translate-y-1/2 flex items-center gap-1">
+                                <button class="px-2 py-0.5 text-xs bg-gray-200 hover:bg-gray-300 rounded transition-colors">
+                                    <i class="fa-solid fa-globe"></i>
+                                </button>
+                                <button class="px-2 py-0.5 text-xs bg-gray-200 hover:bg-gray-300 rounded transition-colors">
+                                    <i class="fa-solid fa-bookmark"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- 发送按钮 -->
+                    <button id="send-btn" class="bg-primary hover:bg-primary/90 text-white py-2 px-6 rounded-r-md transition-colors flex items-center">
+                        <i class="fa-solid fa-paper-plane mr-2"></i>
+                        <span class="hidden sm:inline">发送</span>
+                    </button>
+                    
+                    <!-- 清除按钮 -->
+                    <button id="clear-btn" class="text-gray-500 hover:text-gray-700 p-2 transition-colors">
+                        <i class="fa-solid fa-trash"></i>
+                    </button>
+                </div>
+            </div>
+            
+            <!-- 请求选项卡 -->
+            <div class="bg-white border-b border-gray-200 flex-shrink-0">
+                <div class="flex overflow-x-auto whitespace-nowrap">
+                    <button class="request-tab py-2 px-4 text-sm border-b-2 tab-active" data-tab="params">
+                        <i class="fa-solid fa-params mr-1.5"></i>
+                        <span>参数</span>
+                    </button>
+                    <button class="request-tab py-2 px-4 text-sm border-b-2 border-transparent text-gray-600 hover:text-gray-900" data-tab="headers">
+                        <i class="fa-solid fa-heading mr-1.5"></i>
+                        <span>请求头</span>
+                    </button>
+                    <button class="request-tab py-2 px-4 text-sm border-b-2 border-transparent text-gray-600 hover:text-gray-900" data-tab="body">
+                        <i class="fa-solid fa-file-lines mr-1.5"></i>
+                        <span>请求体</span>
+                    </button>
+                    <button class="request-tab py-2 px-4 text-sm border-b-2 border-transparent text-gray-600 hover:text-gray-900" data-tab="auth">
+                        <i class="fa-solid fa-key mr-1.5"></i>
+                        <span>认证</span>
+                    </button>
+                    <button class="request-tab py-2 px-4 text-sm border-b-2 border-transparent text-gray-600 hover:text-gray-900" data-tab="tests">
+                        <i class="fa-solid fa-flask mr-1.5"></i>
+                        <span>测试</span>
+                    </button>
+                </div>
+            </div>
+            
+            <!-- 请求内容区域 -->
+            <div class="flex-grow overflow-auto bg-gray-50 p-4">
+                <!-- 参数面板 -->
+                <div id="params-panel" class="request-panel">
+                    <div class="bg-white rounded-md panel-shadow overflow-hidden">
+                        <div class="border-b border-gray-200 p-3 flex justify-between items-center">
+                            <h3 class="text-sm font-medium">查询参数</h3>
+                            <button id="add-param-btn" class="text-sm text-primary hover:text-primary/80 transition-colors flex items-center">
+                                <i class="fa-solid fa-plus-circle mr-1"></i>
+                                添加参数
+                            </button>
+                        </div>
+                        
+                        <div class="overflow-x-auto">
+                            <table class="min-w-full divide-y divide-gray-200">
+                                <thead class="bg-gray-50">
+                                    <tr>
+                                        <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/3">参数名</th>
+                                        <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/3">参数值</th>
+                                        <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/6">启用</th>
+                                        <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/6"></th>
+                                    </tr>
+                                </thead>
+                                <tbody id="params-table-body" class="bg-white divide-y divide-gray-200">
+                                    <tr class="param-row">
+                                        <td class="px-4 py-3 whitespace-nowrap">
+                                            <input type="text" class="param-key w-full px-2 py-1 text-sm border border-gray-200 rounded focus:outline-none focus:ring-1 focus:ring-primary" placeholder="参数名">
+                                        </td>
+                                        <td class="px-4 py-3 whitespace-nowrap">
+                                            <input type="text" class="param-value w-full px-2 py-1 text-sm border border-gray-200 rounded focus:outline-none focus:ring-1 focus:ring-primary" placeholder="参数值">
+                                        </td>
+                                        <td class="px-4 py-3 whitespace-nowrap">
+                                            <input type="checkbox" class="param-enabled h-4 w-4 text-primary focus:ring-primary border-gray-300 rounded" checked>
+                                        </td>
+                                        <td class="px-4 py-3 whitespace-nowrap text-right text-sm font-medium">
+                                            <button class="delete-param text-gray-400 hover:text-danger transition-colors">
+                                                <i class="fa-solid fa-trash"></i>
+                                            </button>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        
+                        <div class="p-3 border-t border-gray-200 text-xs text-gray-500">
+                            <p>查询参数将自动添加到请求URL中</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 请求头面板 -->
+                <div id="headers-panel" class="request-panel hidden">
+                    <div class="bg-white rounded-md panel-shadow overflow-hidden">
+                        <div class="border-b border-gray-200 p-3 flex justify-between items-center">
+                            <h3 class="text-sm font-medium">请求头</h3>
+                            <button id="add-header-btn" class="text-sm text-primary hover:text-primary/80 transition-colors flex items-center">
+                                <i class="fa-solid fa-plus-circle mr-1"></i>
+                                添加请求头
+                            </button>
+                        </div>
+                        
+                        <div class="overflow-x-auto">
+                            <table class="min-w-full divide-y divide-gray-200">
+                                <thead class="bg-gray-50">
+                                    <tr>
+                                        <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/3">名称</th>
+                                        <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/3">值</th>
+                                        <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/6">启用</th>
+                                        <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/6"></th>
+                                    </tr>
+                                </thead>
+                                <tbody id="headers-table-body" class="bg-white divide-y divide-gray-200">
+                                    <tr class="header-row">
+                                        <td class="px-4 py-3 whitespace-nowrap">
+                                            <input type="text" class="header-key w-full px-2 py-1 text-sm border border-gray-200 rounded focus:outline-none focus:ring-1 focus:ring-primary" placeholder="Header名称">
+                                        </td>
+                                        <td class="px-4 py-3 whitespace-nowrap">
+                                            <input type="text" class="header-value w-full px-2 py-1 text-sm border border-gray-200 rounded focus:outline-none focus:ring-1 focus:ring-primary" placeholder="Header值">
+                                        </td>
+                                        <td class="px-4 py-3 whitespace-nowrap">
+                                            <input type="checkbox" class="header-enabled h-4 w-4 text-primary focus:ring-primary border-gray-300 rounded" checked>
+                                        </td>
+                                        <td class="px-4 py-3 whitespace-nowrap text-right text-sm font-medium">
+                                            <button class="delete-header text-gray-400 hover:text-danger transition-colors">
+                                                <i class="fa-solid fa-trash"></i>
+                                            </button>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        
+                        <div class="p-3 border-t border-gray-200 flex justify-between items-center">
+                            <p class="text-xs text-gray-500">HTTP请求头信息将随请求一起发送</p>
+                            <button id="add-default-headers" class="text-xs text-primary hover:text-primary/80 transition-colors">
+                                添加默认请求头
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 请求体面板 -->
+                <div id="body-panel" class="request-panel hidden">
+                    <div class="bg-white rounded-md panel-shadow overflow-hidden">
+                        <div class="border-b border-gray-200 p-3">
+                            <div class="flex flex-wrap gap-2">
+                                <button class="body-type-btn px-3 py-1 text-xs border border-primary bg-primary/10 text-primary rounded-md" data-type="json">
+                                    JSON
+                                </button>
+                                <button class="body-type-btn px-3 py-1 text-xs border border-gray-200 text-gray-600 rounded-md hover:border-gray-300" data-type="form">
+                                    表单数据
+                                </button>
+                                <button class="body-type-btn px-3 py-1 text-xs border border-gray-200 text-gray-600 rounded-md hover:border-gray-300" data-type="urlencoded">
+                                    x-www-form-urlencoded
+                                </button>
+                                <button class="body-type-btn px-3 py-1 text-xs border border-gray-200 text-gray-600 rounded-md hover:border-gray-300" data-type="raw">
+                                    原始数据
+                                </button>
+                                <button class="body-type-btn px-3 py-1 text-xs border border-gray-200 text-gray-600 rounded-md hover:border-gray-300" data-type="binary">
+                                    二进制
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <!-- JSON 类型请求体 -->
+                        <div id="json-body" class="body-content p-0">
+                            <div class="flex flex-col h-full">
+                                <textarea id="json-editor" class="flex-grow w-full p-4 font-mono text-sm border-0 focus:outline-none resize-none" 
+                                    placeholder="输入JSON格式的请求体...">{
+    "name": "John Doe",
+    "email": "john@example.com",
+    "age": 30,
+    "isActive": true
+}</textarea>
+                                <div class="p-3 border-t border-gray-200 flex justify-between items-center">
+                                    <button id="format-json-btn" class="text-xs text-primary hover:text-primary/80 transition-colors flex items-center">
+                                        <i class="fa-solid fa-indent mr-1"></i>
+                                        格式化
+                                    </button>
+                                    <button id="clear-json-btn" class="text-xs text-gray-500 hover:text-gray-700 transition-colors">
+                                        清空
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- 其他类型请求体 (默认隐藏) -->
+                        <div id="form-body" class="body-content hidden p-4">
+                            <p class="text-gray-500 text-sm text-center py-8">表单数据请求体编辑器</p>
+                        </div>
+                        
+                        <div id="urlencoded-body" class="body-content hidden p-4">
+                            <p class="text-gray-500 text-sm text-center py-8">x-www-form-urlencoded请求体编辑器</p>
+                        </div>
+                        
+                        <div id="raw-body" class="body-content hidden p-4">
+                            <p class="text-gray-500 text-sm text-center py-8">原始数据请求体编辑器</p>
+                        </div>
+                        
+                        <div id="binary-body" class="body-content hidden p-4">
+                            <p class="text-gray-500 text-sm text-center py-8">二进制文件上传</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 认证面板 -->
+                <div id="auth-panel" class="request-panel hidden">
+                    <div class="bg-white rounded-md panel-shadow overflow-hidden">
+                        <div class="border-b border-gray-200 p-3">
+                            <div class="flex flex-wrap gap-2">
+                                <button class="auth-type-btn px-3 py-1 text-xs border border-primary bg-primary/10 text-primary rounded-md" data-type="none">
+                                    无
+                                </button>
+                                <button class="auth-type-btn px-3 py-1 text-xs border border-gray-200 text-gray-600 rounded-md hover:border-gray-300" data-type="basic">
+                                    Basic Auth
+                                </button>
+                                <button class="auth-type-btn px-3 py-1 text-xs border border-gray-200 text-gray-600 rounded-md hover:border-gray-300" data-type="bearer">
+                                    Bearer Token
+                                </button>
+                                <button class="auth-type-btn px-3 py-1 text-xs border border-gray-200 text-gray-600 rounded-md hover:border-gray-300" data-type="digest">
+                                    Digest Auth
+                                </button>
+                                <button class="auth-type-btn px-3 py-1 text-xs border border-gray-200 text-gray-600 rounded-md hover:border-gray-300" data-type="oauth1">
+                                    OAuth 1.0
+                                </button>
+                                <button class="auth-type-btn px-3 py-1 text-xs border border-gray-200 text-gray-600 rounded-md hover:border-gray-300" data-type="oauth2">
+                                    OAuth 2.0
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <!-- 无认证 -->
+                        <div id="none-auth" class="auth-content p-4">
+                            <p class="text-gray-500 text-sm">此请求不需要认证</p>
+                        </div>
+                        
+                        <!-- 其他认证方式 (默认隐藏) -->
+                        <div id="basic-auth" class="auth-content hidden p-4">
+                            <div class="space-y-3">
+                                <div>
+                                    <label class="block text-xs text-gray-600 mb-1">用户名</label>
+                                    <input type="text" class="w-full px-3 py-2 text-sm border border-gray-200 rounded focus:outline-none focus:ring-1 focus:ring-primary">
+                                </div>
+                                <div>
+                                    <label class="block text-xs text-gray-600 mb-1">密码</label>
+                                    <input type="password" class="w-full px-3 py-2 text-sm border border-gray-200 rounded focus:outline-none focus:ring-1 focus:ring-primary">
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div id="bearer-auth" class="auth-content hidden p-4">
+                            <div>
+                                <label class="block text-xs text-gray-600 mb-1">Token</label>
+                                <input type="text" class="w-full px-3 py-2 text-sm border border-gray-200 rounded focus:outline-none focus:ring-1 focus:ring-primary" placeholder="输入Bearer Token">
+                            </div>
+                        </div>
+                        
+                        <div id="digest-auth" class="auth-content hidden p-4">
+                            <p class="text-gray-500 text-sm">Digest认证设置</p>
+                        </div>
+                        
+                        <div id="oauth1-auth" class="auth-content hidden p-4">
+                            <p class="text-gray-500 text-sm">OAuth 1.0认证设置</p>
+                        </div>
+                        
+                        <div id="oauth2-auth" class="auth-content hidden p-4">
+                            <p class="text-gray-500 text-sm">OAuth 2.0认证设置</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 测试面板 -->
+                <div id="tests-panel" class="request-panel hidden">
+                    <div class="bg-white rounded-md panel-shadow overflow-hidden">
+                        <div class="border-b border-gray-200 p-3 flex justify-between items-center">
+                            <h3 class="text-sm font-medium">测试脚本</h3>
+                            <button id="add-test-btn" class="text-sm text-primary hover:text-primary/80 transition-colors flex items-center">
+                                <i class="fa-solid fa-plus-circle mr-1"></i>
+                                添加测试
+                            </button>
+                        </div>
+                        
+                        <div class="p-4">
+                            <textarea class="w-full h-64 p-3 font-mono text-sm border border-gray-200 rounded-md focus:outline-none focus:ring-1 focus:ring-primary" 
+                                placeholder="输入测试脚本...">// 示例测试脚本
+pm.test("响应状态码为200", function () {
+    pm.response.to.have.status(200);
+});
+
+pm.test("响应包含用户数据", function () {
+    var jsonData = pm.response.json();
+    pm.expect(jsonData).to.have.property('users');
+    pm.expect(jsonData.users).to.be.an('array');
+});</textarea>
+                            
+                            <div class="mt-3 flex justify-between items-center">
+                                <p class="text-xs text-gray-500">使用JavaScript编写测试脚本，请求完成后自动执行</p>
+                                <button class="text-xs text-primary hover:text-primary/80 transition-colors">
+                                    测试片段
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 响应区域 -->
+            <div id="response-section" class="border-t border-gray-200 max-h-[400px] flex flex-col hidden">
+                <!-- 响应选项卡 -->
+                <div class="bg-white border-b border-gray-200 flex-shrink-0">
+                    <div class="flex overflow-x-auto whitespace-nowrap">
+                        <button class="response-tab py-2 px-4 text-sm border-b-2 tab-active" data-tab="body">
+                            <i class="fa-solid fa-file-lines mr-1.5"></i>
+                            <span>响应体</span>
+                        </button>
+                        <button class="response-tab py-2 px-4 text-sm border-b-2 border-transparent text-gray-600 hover:text-gray-900" data-tab="headers">
+                            <i class="fa-solid fa-heading mr-1.5"></i>
+                            <span>响应头</span>
+                        </button>
+                        <button class="response-tab py-2 px-4 text-sm border-b-2 border-transparent text-gray-600 hover:text-gray-900" data-tab="cookies">
+                            <i class="fa-solid fa-cookie mr-1.5"></i>
+                            <span>Cookies</span>
+                        </button>
+                        <button class="response-tab py-2 px-4 text-sm border-b-2 border-transparent text-gray-600 hover:text-gray-900" data-tab="timeline">
+                            <i class="fa-solid fa-chart-line mr-1.5"></i>
+                            <span>时间线</span>
+                        </button>
+                        <button class="response-tab py-2 px-4 text-sm border-b-2 border-transparent text-gray-600 hover:text-gray-900" data-tab="tests">
+                            <i class="fa-solid fa-check-square mr-1.5"></i>
+                            <span>测试结果</span>
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- 响应状态 -->
+                <div class="bg-white border-b border-gray-200 p-2 flex justify-between items-center">
+                    <div class="flex items-center">
+                        <span id="response-status" class="inline-flex items-center justify-center px-3 py-1 rounded-full text-sm font-medium bg-success/10 text-success">
+                            200 OK
+                        </span>
+                        <span id="response-time" class="ml-4 text-sm text-gray-600">
+                            <i class="fa-solid fa-clock mr-1"></i>
+                            246 ms
+                        </span>
+                        <span id="response-size" class="ml-4 text-sm text-gray-600">
+                            <i class="fa-solid fa-file mr-1"></i>
+                            1.2 KB
+                        </span>
+                    </div>
+                    <div class="flex items-center">
+                        <button id="copy-response-btn" class="text-sm text-gray-600 hover:text-primary transition-colors mr-3">
+                            <i class="fa-solid fa-copy mr-1"></i>
+                            复制
+                        </button>
+                        <button id="download-response-btn" class="text-sm text-gray-600 hover:text-primary transition-colors">
+                            <i class="fa-solid fa-download mr-1"></i>
+                            下载
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- 响应内容 -->
+                <div class="flex-grow overflow-auto bg-gray-50">
+                    <!-- 响应体 -->
+                    <div id="response-body-panel" class="response-panel p-4">
+                        <div class="bg-white rounded-md panel-shadow overflow-hidden">
+                            <div class="border-b border-gray-200 p-3 flex flex-wrap gap-2">
+                                <button class="response-view-btn px-3 py-1 text-xs border border-primary bg-primary/10 text-primary rounded-md" data-view="pretty">
+                                    格式化
+                                </button>
+                                <button class="response-view-btn px-3 py-1 text-xs border border-gray-200 text-gray-600 rounded-md hover:border-gray-300" data-view="raw">
+                                    原始
+                                </button>
+                                <button class="response-view-btn px-3 py-1 text-xs border border-gray-200 text-gray-600 rounded-md hover:border-gray-300" data-view="preview">
+                                    预览
+                                </button>
+                            </div>
+                            
+                            <!-- 格式化视图 -->
+                            <div id="pretty-response" class="response-view p-4 font-mono text-sm overflow-auto max-h-[300px]">
+<pre><span class="json-key">{
+  "status": </span><span class="json-string">"success"</span><span class="json-key">,</span>
+  "data": <span class="json-key">{
+    "users": [
+      {
+        "id": </span><span class="json-number">1</span><span class="json-key">,</span>
+        "name": </span><span class="json-string">"John Doe"</span><span class="json-key">,</span>
+        "email": </span><span class="json-string">"john@example.com"</span><span class="json-key">,</span>
+        "age": </span><span class="json-number">30</span><span class="json-key">,</span>
+        "isActive": </span><span class="json-boolean">true</span>
+      },
+      {
+        "id": </span><span class="json-number">2</span><span class="json-key">,</span>
+        "name": </span><span class="json-string">"Jane Smith"</span><span class="json-key">,</span>
+        "email": </span><span class="json-string">"jane@example.com"</span><span class="json-key">,</span>
+        "age": </span><span class="json-number">28</span><span class="json-key">,</span>
+        "isActive": </span><span class="json-boolean">true</span>
+      }
+    ],
+    "total": </span><span class="json-number">2</span><span class="json-key">,</span>
+    "page": </span><span class="json-number">1</span><span class="json-key">,</span>
+    "limit": </span><span class="json-number">10</span><span class="json-key">,</span>
+    "hasMore": </span><span class="json-boolean">false</span>
+  }
+}</span></pre>
+                            </div>
+                            
+                            <!-- 原始视图 (默认隐藏) -->
+                            <div id="raw-response" class="response-view hidden p-4 font-mono text-sm overflow-auto max-h-[300px]">
+                                {"status":"success","data":{"users":[{"id":1,"name":"John Doe","email":"john@example.com","age":30,"isActive":true},{"id":2,"name":"Jane Smith","email":"jane@example.com","age":28,"isActive":true}],"total":2,"page":1,"limit":10,"hasMore":false}}
+                            </div>
+                            
+                            <!-- 预览视图 (默认隐藏) -->
+                            <div id="preview-response" class="response-view hidden p-4 overflow-auto max-h-[300px]">
+                                <div class="border rounded-md p-3 mb-2">
+                                    <div class="font-medium mb-1">status: success</div>
+                                </div>
+                                
+                                <div class="border rounded-md p-3">
+                                    <div class="font-medium mb-2">data</div>
+                                    
+                                    <div class="ml-4 mb-2">
+                                        <div class="font-medium mb-1">users (2 items)</div>
+                                        <div class="border rounded-md p-2 mb-2 ml-4">
+                                            <div>id: 1</div>
+                                            <div>name: John Doe</div>
+                                            <div>email: john@example.com</div>
+                                            <div>age: 30</div>
+                                            <div>isActive: true</div>
+                                        </div>
+                                        <div class="border rounded-md p-2 ml-4">
+                                            <div>id: 2</div>
+                                            <div>name: Jane Smith</div>
+                                            <div>email: jane@example.com</div>
+                                            <div>age: 28</div>
+                                            <div>isActive: true</div>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="ml-4">
+                                        <div>total: 2</div>
+                                        <div>page: 1</div>
+                                        <div>limit: 10</div>
+                                        <div>hasMore: false</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- 响应头 (默认隐藏) -->
+                    <div id="response-headers-panel" class="response-panel hidden p-4">
+                        <div class="bg-white rounded-md panel-shadow overflow-hidden">
+                            <div class="overflow-x-auto">
+                                <table class="min-w-full divide-y divide-gray-200">
+                                    <thead class="bg-gray-50">
+                                        <tr>
+                                            <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/3">名称</th>
+                                            <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-2/3">值</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody class="bg-white divide-y divide-gray-200">
+                                        <tr>
+                                            <td class="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900">Content-Type</td>
+                                            <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-600">application/json; charset=utf-8</td>
+                                        </tr>
+                                        <tr>
+                                            <td class="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900">Date</td>
+                                            <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-600">Wed, 15 Jun 2023 10:30:45 GMT</td>
+                                        </tr>
+                                        <tr>
+                                            <td class="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900">Server</td>
+                                            <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-600">nginx/1.21.6</td>
+                                        </tr>
+                                        <tr>
+                                            <td class="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900">Cache-Control</td>
+                                            <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-600">no-cache, no-store, must-revalidate</td>
+                                        </tr>
+                                        <tr>
+                                            <td class="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900">Content-Length</td>
+                                            <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-600">328</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Cookies (默认隐藏) -->
+                    <div id="response-cookies-panel" class="response-panel hidden p-4">
+                        <div class="bg-white rounded-md panel-shadow overflow-hidden p-4">
+                            <p class="text-gray-500 text-sm text-center py-8">没有返回Cookies</p>
+                        </div>
+                    </div>
+                    
+                    <!-- 时间线 (默认隐藏) -->
+                    <div id="response-timeline-panel" class="response-panel hidden p-4">
+                        <div class="bg-white rounded-md panel-shadow overflow-hidden p-4">
+                            <div class="h-64">
+                                <canvas id="timeline-chart"></canvas>
+                            </div>
+                            <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4 text-sm">
+                                <div class="p-2 border rounded-md">
+                                    <div class="text-gray-500">DNS解析</div>
+                                    <div class="font-medium">12 ms</div>
+                                </div>
+                                <div class="p-2 border rounded-md">
+                                    <div class="text-gray-500">TCP连接</div>
+                                    <div class="font-medium">45 ms</div>
+                                </div>
+                                <div class="p-2 border rounded-md">
+                                    <div class="text-gray-500">请求发送</div>
+                                    <div class="font-medium">8 ms</div>
+                                </div>
+                                <div class="p-2 border rounded-md">
+                                    <div class="text-gray-500">响应接收</div>
+                                    <div class="font-medium">181 ms</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- 测试结果 (默认隐藏) -->
+                    <div id="response-tests-panel" class="response-panel hidden p-4">
+                        <div class="bg-white rounded-md panel-shadow overflow-hidden">
+                            <div class="border-b border-gray-200 p-3 flex justify-between items-center">
+                                <h3 class="text-sm font-medium">测试结果</h3>
+                                <span class="text-xs px-2 py-1 bg-success/10 text-success rounded-full">2 个测试，全部通过</span>
+                            </div>
+                            
+                            <div class="p-4">
+                                <div class="mb-3 p-2 border border-success/30 bg-success/5 rounded-md">
+                                    <div class="flex items-center">
+                                        <i class="fa-solid fa-check-circle text-success mr-2"></i>
+                                        <span class="text-sm font-medium">响应状态码为200</span>
+                                    </div>
+                                    <div class="text-xs text-gray-500 mt-1 ml-5">通过 - 24 ms</div>
+                                </div>
+                                
+                                <div class="p-2 border border-success/30 bg-success/5 rounded-md">
+                                    <div class="flex items-center">
+                                        <i class="fa-solid fa-check-circle text-success mr-2"></i>
+                                        <span class="text-sm font-medium">响应包含用户数据</span>
+                                    </div>
+                                    <div class="text-xs text-gray-500 mt-1 ml-5">通过 - 12 ms</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- 移动端底部工具栏 -->
+    <div class="md:hidden bg-white border-t border-gray-200 py-2 px-4 flex justify-around items-center fixed bottom-0 left-0 right-0 z-10">
+        <button class="flex flex-col items-center justify-center text-primary">
+            <i class="fa-solid fa-paper-plane text-lg"></i>
+            <span class="text-xs mt-1">发送</span>
+        </button>
+        <button class="flex flex-col items-center justify-center text-gray-500">
+            <i class="fa-solid fa-folder text-lg"></i>
+            <span class="text-xs mt-1">集合</span>
+        </button>
+        <button class="flex flex-col items-center justify-center text-gray-500">
+            <i class="fa-solid fa-history text-lg"></i>
+            <span class="text-xs mt-1">历史</span>
+        </button>
+        <button class="flex flex-col items-center justify-center text-gray-500">
+            <i class="fa-solid fa-plus-circle text-lg"></i>
+            <span class="text-xs mt-1">新建</span>
+        </button>
+    </div>
+
+    <!-- 通知组件 -->
+    <div id="notification" class="fixed bottom-20 right-4 p-4 rounded-lg shadow-lg transform transition-all duration-300 translate-y-full opacity-0 z-50 flex items-center max-w-xs">
+        <i id="notification-icon" class="mr-2"></i>
+        <span id="notification-message"></span>
+    </div>
+
+    <script>
+        // DOM元素
+        const methodSelect = document.getElementById('method-select');
+        const urlInput = document.getElementById('url-input');
+        const sendBtn = document.getElementById('send-btn');
+        const clearBtn = document.getElementById('clear-btn');
+        const responseSection = document.getElementById('response-section');
+        const collectionsTab = document.getElementById('collections-tab');
+        const historyTab = document.getElementById('history-tab');
+        const collectionsPanel = document.getElementById('collections-panel');
+        const historyPanel = document.getElementById('history-panel');
+        const requestTabs = document.querySelectorAll('.request-tab');
+        const requestPanels = document.querySelectorAll('.request-panel');
+        const responseTabs = document.querySelectorAll('.response-tab');
+        const responsePanels = document.querySelectorAll('.response-panel');
+        const responseViewBtns = document.querySelectorAll('.response-view-btn');
+        const responseViews = document.querySelectorAll('.response-view');
+        const bodyTypeBtns = document.querySelectorAll('.body-type-btn');
+        const bodyContents = document.querySelectorAll('.body-content');
+        const authTypeBtns = document.querySelectorAll('.auth-type-btn');
+        const authContents = document.querySelectorAll('.auth-content');
+        const addParamBtn = document.getElementById('add-param-btn');
+        const paramsTableBody = document.getElementById('params-table-body');
+        const addHeaderBtn = document.getElementById('add-header-btn');
+        const headersTableBody = document.getElementById('headers-table-body');
+        const formatJsonBtn = document.getElementById('format-json-btn');
+        const clearJsonBtn = document.getElementById('clear-json-btn');
+        const jsonEditor = document.getElementById('json-editor');
+        const copyResponseBtn = document.getElementById('copy-response-btn');
+        const downloadResponseBtn = document.getElementById('download-response-btn');
+        const themeToggle = document.getElementById('theme-toggle');
+        const notification = document.getElementById('notification');
+        const notificationMessage = document.getElementById('notification-message');
+        const notificationIcon = document.getElementById('notification-icon');
+        
+        // 初始化时间线图表
+        function initTimelineChart() {
+            const ctx = document.getElementById('timeline-chart').getContext('2d');
+            new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: ['DNS解析', 'TCP连接', '请求发送', '响应接收'],
+                    datasets: [{
+                        label: '耗时 (ms)',
+                        data: [12, 45, 8, 181],
+                        backgroundColor: [
+                            'rgba(59, 130, 246, 0.7)',
+                            'rgba(16, 185, 129, 0.7)',
+                            'rgba(245, 158, 11, 0.7)',
+                            'rgba(236, 72, 153, 0.7)'
+                        ],
+                        borderColor: [
+                            'rgb(59, 130, 246)',
+                            'rgb(16, 185, 129)',
+                            'rgb(245, 158, 11)',
+                            'rgb(236, 72, 153)'
+                        ],
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            title: {
+                                display: true,
+                                text: '毫秒 (ms)'
+                            }
+                        }
+                    }
+                }
+            });
+        }
+        
+        // 发送请求
+        sendBtn.addEventListener('click', () => {
+            const url = urlInput.value.trim();
+            if (!url) {
+                showNotification('请输入URL地址', 'error');
+                return;
+            }
+            
+            // 显示加载状态
+            sendBtn.disabled = true;
+            sendBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-2"></i><span class="hidden sm:inline">发送中...</span>';
+            
+            // 模拟请求延迟
+            setTimeout(() => {
+                // 显示响应区域
+                responseSection.classList.remove('hidden');
+                
+                // 滚动到响应区域
+                responseSection.scrollIntoView({ behavior: 'smooth', block: 'end' });
+                
+                // 恢复按钮状态
+                sendBtn.disabled = false;
+                sendBtn.innerHTML = '<i class="fa-solid fa-paper-plane mr-2"></i><span class="hidden sm:inline">发送</span>';
+                
+                showNotification('请求已发送，收到响应', 'success');
+                
+                // 初始化图表（只初始化一次）
+                if (!window.timelineChartInitialized) {
+                    initTimelineChart();
+                    window.timelineChartInitialized = true;
+                }
+            }, 800);
+        });
+        
+        // 清除请求
+        clearBtn.addEventListener('click', () => {
+            methodSelect.value = 'GET';
+            urlInput.value = '';
+            jsonEditor.value = '{\n    "name": "John Doe",\n    "email": "john@example.com",\n    "age": 30,\n    "isActive": true\n}';
+            
+            // 清空参数和请求头
+            while (paramsTableBody.children.length > 1) {
+                paramsTableBody.removeChild(paramsTableBody.lastChild);
+            }
+            const firstParamRow = paramsTableBody.querySelector('.param-row');
+            firstParamRow.querySelector('.param-key').value = '';
+            firstParamRow.querySelector('.param-value').value = '';
+            
+            while (headersTableBody.children.length > 1) {
+                headersTableBody.removeChild(headersTableBody.lastChild);
+            }
+            const firstHeaderRow = headersTableBody.querySelector('.header-row');
+            firstHeaderRow.querySelector('.header-key').value = '';
+            firstHeaderRow.querySelector('.header-value').value = '';
+            
+            // 隐藏响应区域
+            responseSection.classList.add('hidden');
+            
+            showNotification('请求已清空', 'info');
+        });
+        
+        // 切换集合/历史标签
+        collectionsTab.addEventListener('click', () => {
+            collectionsTab.classList.add('tab-active');
+            historyTab.classList.remove('tab-active');
+            collectionsPanel.classList.remove('hidden');
+            historyPanel.classList.add('hidden');
+        });
+        
+        historyTab.addEventListener('click', () => {
+            historyTab.classList.add('tab-active');
+            collectionsTab.classList.remove('tab-active');
+            historyPanel.classList.remove('hidden');
+            collectionsPanel.classList.add('hidden');
+        });
+        
+        // 切换请求选项卡
+        requestTabs.forEach(tab => {
+            tab.addEventListener('click', () => {
+                const tabName = tab.dataset.tab;
+                
+                // 更新选项卡状态
+                requestTabs.forEach(t => {
+                    t.classList.remove('tab-active');
+                    t.classList.add('border-transparent', 'text-gray-600', 'hover:text-gray-900');
+                });
+                tab.classList.add('tab-active');
+                tab.classList.remove('border-transparent', 'text-gray-600', 'hover:text-gray-900');
+                
+                // 显示对应面板
+                requestPanels.forEach(panel => {
+                    panel.classList.add('hidden');
+                });
+                document.getElementById(`${tabName}-panel`).classList.remove('hidden');
+            });
+        });
+        
+        // 切换响应选项卡
+        responseTabs.forEach(tab => {
+            tab.addEventListener('click', () => {
+                const tabName = tab.dataset.tab;
+                
+                // 更新选项卡状态
+                responseTabs.forEach(t => {
+                    t.classList.remove('tab-active');
+                    t.classList.add('border-transparent', 'text-gray-600', 'hover:text-gray-900');
+                });
+                tab.classList.add('tab-active');
+                tab.classList.remove('border-transparent', 'text-gray-600', 'hover:text-gray-900');
+                
+                // 显示对应面板
+                responsePanels.forEach(panel => {
+                    panel.classList.add('hidden');
+                });
+                document.getElementById(`response-${tabName}-panel`).classList.remove('hidden');
+            });
+        });
+        
+        // 切换响应视图
+        responseViewBtns.forEach(btn => {
+            btn.addEventListener('click', () => {
+                const viewName = btn.dataset.view;
+                
+                // 更新按钮状态
+                responseViewBtns.forEach(b => {
+                    b.classList.remove('border-primary', 'bg-primary/10', 'text-primary');
+                    b.classList.add('border-gray-200', 'text-gray-600', 'hover:border-gray-300');
+                });
+                btn.classList.add('border-primary', 'bg-primary/10', 'text-primary');
+                btn.classList.remove('border-gray-200', 'text-gray-600', 'hover:border-gray-300');
+                
+                // 显示对应视图
+                responseViews.forEach(view => {
+                    view.classList.add('hidden');
+                });
+                document.getElementById(`${viewName}-response`).classList.remove('hidden');
+            });
+        });
+        
+        // 切换请求体类型
+        bodyTypeBtns.forEach(btn => {
+            btn.addEventListener('click', () => {
+                const typeName = btn.dataset.type;
+                
+                // 更新按钮状态
+                bodyTypeBtns.forEach(b => {
+                    b.classList.remove('border-primary', 'bg-primary/10', 'text-primary');
+                    b.classList.add('border-gray-200', 'text-gray-600', 'hover:border-gray-300');
+                });
+                btn.classList.add('border-primary', 'bg-primary/10', 'text-primary');
+                btn.classList.remove('border-gray-200', 'text-gray-600', 'hover:border-gray-300');
+                
+                // 显示对应内容
+                bodyContents.forEach(content => {
+                    content.classList.add('hidden');
+                });
+                document.getElementById(`${typeName}-body`).classList.remove('hidden');
+            });
+        });
+        
+        // 切换认证类型
+        authTypeBtns.forEach(btn => {
+            btn.addEventListener('click', () => {
+                const typeName = btn.dataset.type;
+                
+                // 更新按钮状态
+                authTypeBtns.forEach(b => {
+                    b.classList.remove('border-primary', 'bg-primary/10', 'text-primary');
+                    b.classList.add('border-gray-200', 'text-gray-600', 'hover:border-gray-300');
+                });
+                btn.classList.add('border-primary', 'bg-primary/10', 'text-primary');
+                btn.classList.remove('border-gray-200', 'text-gray-600', 'hover:border-gray-300');
+                
+                // 显示对应内容
+                authContents.forEach(content => {
+                    content.classList.add('hidden');
+                });
+                document.getElementById(`${typeName}-auth`).classList.remove('hidden');
+            });
+        });
+        
+        // 添加参数
+        addParamBtn.addEventListener('click', () => {
+            const newRow = document.createElement('tr');
+            newRow.className = 'param-row';
+            newRow.innerHTML = `
+                <td class="px-4 py-3 whitespace-nowrap">
+                    <input type="text" class="param-key w-full px-2 py-1 text-sm border border-gray-200 rounded focus:outline-none focus:ring-1 focus:ring-primary" placeholder="参数名">
+                </td>
+                <td class="px-4 py-3 whitespace-nowrap">
+                    <input type="text" class="param-value w-full px-2 py-1 text-sm border border-gray-200 rounded focus:outline-none focus:ring-1 focus:ring-primary" placeholder="参数值">
+                </td>
+                <td class="px-4 py-3 whitespace-nowrap">
+                    <input type="checkbox" class="param-enabled h-4 w-4 text-primary focus:ring-primary border-gray-300 rounded" checked>
+                </td>
+                <td class="px-4 py-3 whitespace-nowrap text-right text-sm font-medium">
+                    <button class="delete-param text-gray-400 hover:text-danger transition-colors">
+                        <i class="fa-solid fa-trash"></i>
+                    </button>
+                </td>
+            `;
+            
+            paramsTableBody.appendChild(newRow);
+            
+            // 添加删除事件
+            newRow.querySelector('.delete-param').addEventListener('click', () => {
+                paramsTableBody.removeChild(newRow);
+            });
+        });
+        
+        // 删除参数
+        document.addEventListener('click', (e) => {
+            if (e.target.closest('.delete-param') && paramsTableBody.children.length > 1) {
+                const row = e.target.closest('.param-row');
+                paramsTableBody.removeChild(row);
+            }
+        });
+        
+        // 添加请求头
+        addHeaderBtn.addEventListener('click', () => {
+            const newRow = document.createElement('tr');
+            newRow.className = 'header-row';
+            newRow.innerHTML = `
+                <td class="px-4 py-3 whitespace-nowrap">
+                    <input type="text" class="header-key w-full px-2 py-1 text-sm border border-gray-200 rounded focus:outline-none focus:ring-1 focus:ring-primary" placeholder="Header名称">
+                </td>
+                <td class="px-4 py-3 whitespace-nowrap">
+                    <input type="text" class="header-value w-full px-2 py-1 text-sm border border-gray-200 rounded focus:outline-none focus:ring-1 focus:ring-primary" placeholder="Header值">
+                </td>
+                <td class="px-4 py-3 whitespace-nowrap">
+                    <input type="checkbox" class="header-enabled h-4 w-4 text-primary focus:ring-primary border-gray-300 rounded" checked>
+                </td>
+                <td class="px-4 py-3 whitespace-nowrap text-right text-sm font-medium">
+                    <button class="delete-header text-gray-400 hover:text-danger transition-colors">
+                        <i class="fa-solid fa-trash"></i>
+                    </button>
+                </td>
+            `;
+            
+            headersTableBody.appendChild(newRow);
+            
+            // 添加删除事件
+            newRow.querySelector('.delete-header').addEventListener('click', () => {
+                headersTableBody.removeChild(newRow);
+            });
+        });
+        
+        // 删除请求头
+        document.addEventListener('click', (e) => {
+            if (e.target.closest('.delete-header') && headersTableBody.children.length > 1) {
+                const row = e.target.closest('.header-row');
+                headersTableBody.removeChild(row);
+            }
+        });
+        
+        // 格式化JSON
+        formatJsonBtn.addEventListener('click', () => {
+            try {
+                const json = JSON.parse(jsonEditor.value);
+                jsonEditor.value = JSON.stringify(json, null, 4);
+                showNotification('JSON已格式化', 'success');
+            } catch (error) {
+                showNotification('JSON格式错误，无法格式化', 'error');
+                console.error('JSON格式化错误:', error);
+            }
+        });
+        
+        // 清空JSON
+        clearJsonBtn.addEventListener('click', () => {
+            jsonEditor.value = '';
+            showNotification('JSON内容已清空', 'info');
+        });
+        
+        // 复制响应
+        copyResponseBtn.addEventListener('click', () => {
+            const responseText = document.querySelector('#pretty-response pre').textContent;
+            navigator.clipboard.writeText(responseText).then(() => {
+                showNotification('响应内容已复制', 'success');
+            }).catch(err => {
+                showNotification('复制失败，请手动复制', 'error');
+                console.error('复制失败:', err);
+            });
+        });
+        
+        // 下载响应
+        downloadResponseBtn.addEventListener('click', () => {
+            const responseText = document.querySelector('#pretty-response pre').textContent;
+            const blob = new Blob([responseText], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'response.json';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            
+            showNotification('响应内容已下载', 'success');
+        });
+        
+        // 切换主题
+        themeToggle.addEventListener('click', () => {
+            const isDark = document.documentElement.classList.toggle('dark');
+            const icon = themeToggle.querySelector('i');
+            
+            if (isDark) {
+                document.documentElement.classList.add('dark');
+                icon.className = 'fa-solid fa-sun text-yellow-400';
+                document.body.classList.add('bg-gray-900', 'text-white');
+                document.querySelectorAll('.bg-white').forEach(el => {
+                    el.classList.remove('bg-white');
+                    el.classList.add('bg-gray-800');
+                });
+                document.querySelectorAll('.bg-gray-50').forEach(el => {
+                    el.classList.remove('bg-gray-50');
+                    el.classList.add('bg-gray-800');
+                });
+                showNotification('已切换到深色模式', 'info');
+            } else {
+                document.documentElement.classList.remove('dark');
+                icon.className = 'fa-solid fa-moon text-gray-600';
+                document.body.classList.remove('bg-gray-900', 'text-white');
+                document.querySelectorAll('.bg-gray-800').forEach(el => {
+                    el.classList.remove('bg-gray-800');
+                    el.classList.add('bg-white');
+                });
+                document.querySelectorAll('.bg-gray-800').forEach(el => {
+                    el.classList.remove('bg-gray-800');
+                    el.classList.add('bg-gray-50');
+                });
+                showNotification('已切换到浅色模式', 'info');
+            }
+        });
+        
+        // 显示通知
+        function showNotification(message, type = 'info') {
+            notificationMessage.textContent = message;
+            
+            // 设置图标和样式
+            notification.className = 'fixed bottom-20 right-4 p-4 rounded-lg shadow-lg transform transition-all duration-300 translate-y-0 opacity-100 z-50 flex items-center max-w-xs';
+            
+            if (type === 'success') {
+                notification.classList.add('bg-green-50', 'text-green-800', 'border-l-4', 'border-green-400');
+                notificationIcon.className = 'fa-solid fa-check-circle text-green-500 mr-2';
+            } else if (type === 'error') {
+                notification.classList.add('bg-red-50', 'text-red-800', 'border-l-4', 'border-red-400');
+                notificationIcon.className = 'fa-solid fa-exclamation-circle text-red-500 mr-2';
+            } else if (type === 'warning') {
+                notification.classList.add('bg-yellow-50', 'text-yellow-800', 'border-l-4', 'border-yellow-400');
+                notificationIcon.className = 'fa-solid fa-exclamation-triangle text-yellow-500 mr-2';
+            } else {
+                notification.classList.add('bg-blue-50', 'text-blue-800', 'border-l-4', 'border-blue-400');
+                notificationIcon.className = 'fa-solid fa-info-circle text-blue-500 mr-2';
+            }
+            
+            // 3秒后自动隐藏
+            setTimeout(() => {
+                notification.classList.add('translate-y-full', 'opacity-0');
+            }, 3000);
+        }
+        
+        // 初始化
+        document.addEventListener('DOMContentLoaded', () => {
+            // 设置默认URL
+            urlInput.value = 'https://api.example.com/users';
+        });
+    </script>
+</body>
+</html>

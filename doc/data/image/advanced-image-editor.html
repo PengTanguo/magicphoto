@@ -1,0 +1,1334 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>高级图片编辑工具</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.8/dist/chart.umd.min.js"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#165DFF',
+                        secondary: '#722ED1',
+                        accent: '#FF7D00',
+                        dark: '#1D2129',
+                        light: '#F2F3F5'
+                    },
+                    fontFamily: {
+                        inter: ['Inter', 'system-ui', 'sans-serif'],
+                    },
+                }
+            }
+        }
+    </script>
+    <style type="text/tailwindcss">
+        @layer utilities {
+            .content-auto {
+                content-visibility: auto;
+            }
+            .tool-btn {
+                @apply flex items-center gap-2 p-3 rounded-lg transition-all duration-300 hover:bg-primary/10 text-dark;
+            }
+            .tool-btn-active {
+                @apply bg-primary/10 text-primary border-l-4 border-primary;
+            }
+            .control-panel {
+                @apply bg-white rounded-xl shadow-sm p-4 transition-all duration-300;
+            }
+            .slider-control {
+                @apply w-full h-2 bg-gray-200 rounded-full appearance-none cursor-pointer;
+            }
+            .slider-control::-webkit-slider-thumb {
+                @apply appearance-none w-5 h-5 rounded-full bg-primary cursor-pointer transition-transform hover:scale-125;
+            }
+            .zoom-btn {
+                @apply w-8 h-8 flex items-center justify-center rounded-full bg-white/80 backdrop-blur-sm shadow-md hover:bg-white transition-all text-dark;
+            }
+            .canvas-container {
+                @apply relative bg-gray-100 rounded-xl overflow-hidden flex items-center justify-center;
+            }
+            .brush-size-indicator {
+                @apply absolute rounded-full bg-primary/30 border-2 border-primary;
+            }
+        }
+    </style>
+</head>
+<body class="font-inter bg-gray-50 min-h-screen flex flex-col text-dark">
+    <!-- 顶部导航 -->
+    <header class="bg-white border-b border-gray-200 sticky top-0 z-30">
+        <div class="container mx-auto px-4">
+            <div class="flex items-center justify-between h-16">
+                <div class="flex items-center gap-2">
+                    <i class="fa fa-paint-brush text-primary text-2xl"></i>
+                    <h1 class="text-xl font-bold">PhotoEnhance <span class="text-primary">Pro</span></h1>
+                </div>
+                
+                <div class="flex items-center gap-4">
+                    <button id="undo-btn" class="flex items-center gap-1 px-3 py-2 rounded-lg bg-gray-100 hover:bg-gray-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed" disabled>
+                        <i class="fa fa-undo"></i>
+                        <span class="hidden sm:inline">撤销</span>
+                    </button>
+                    
+                    <button id="redo-btn" class="flex items-center gap-1 px-3 py-2 rounded-lg bg-gray-100 hover:bg-gray-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed" disabled>
+                        <i class="fa fa-repeat"></i>
+                        <span class="hidden sm:inline">重做</span>
+                    </button>
+                    
+                    <div class="h-6 w-px bg-gray-300"></div>
+                    
+                    <label for="import-image" class="flex items-center gap-1 px-3 py-2 rounded-lg bg-primary text-white hover:bg-primary/90 transition-colors cursor-pointer">
+                        <i class="fa fa-upload"></i>
+                        <span class="hidden sm:inline">导入图片</span>
+                    </label>
+                    <input type="file" id="import-image" accept="image/*" class="hidden">
+                    
+                    <button id="export-image" class="flex items-center gap-1 px-3 py-2 rounded-lg bg-accent text-white hover:bg-accent/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed" disabled>
+                        <i class="fa fa-download"></i>
+                        <span class="hidden sm:inline">导出图片</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- 主内容区 -->
+    <main class="flex-grow container mx-auto px-4 py-6">
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+            <!-- 左侧工具栏 -->
+            <div class="lg:col-span-1 space-y-2">
+                <button class="tool-btn tool-btn-active w-full justify-start" data-tool="denoise">
+                    <i class="fa fa-magic"></i>
+                    <span class="hidden sm:inline">去噪</span>
+                </button>
+                
+                <button class="tool-btn w-full justify-start" data-tool="sharpness">
+                    <i class="fa fa-search-plus"></i>
+                    <span class="hidden sm:inline">锐化/模糊</span>
+                </button>
+                
+                <button class="tool-btn w-full justify-start" data-tool="redeye">
+                    <i class="fa fa-eye"></i>
+                    <span class="hidden sm:inline">红眼去除</span>
+                </button>
+                
+                <button class="tool-btn w-full justify-start" data-tool="repair">
+                    <i class="fa fa-wrench"></i>
+                    <span class="hidden sm:inline">修复瑕疵</span>
+                </button>
+                
+                <button class="tool-btn w-full justify-start" data-tool="watermark">
+                    <i class="fa fa-ban"></i>
+                    <span class="hidden sm:inline">去水印</span>
+                </button>
+                
+                <button class="tool-btn w-full justify-start" data-tool="superres">
+                    <i class="fa fa-expand"></i>
+                    <span class="hidden sm:inline">超分辨率</span>
+                </button>
+                
+                <div class="h-px bg-gray-200 my-2"></div>
+                
+                <button class="tool-btn w-full justify-start" data-tool="compare">
+                    <i class="fa fa-exchange"></i>
+                    <span class="hidden sm:inline">对比</span>
+                </button>
+                
+                <button class="tool-btn w-full justify-start" data-tool="presets">
+                    <i class="fa fa-th-large"></i>
+                    <span class="hidden sm:inline">预设</span>
+                </button>
+            </div>
+            
+            <!-- 中间预览区 -->
+            <div class="lg:col-span-8">
+                <div class="control-panel h-full flex flex-col">
+                    <div class="flex justify-between items-center mb-4">
+                        <h2 class="text-lg font-semibold">预览</h2>
+                        <div class="flex items-center gap-2">
+                            <button class="zoom-btn" id="zoom-out">
+                                <i class="fa fa-search-minus"></i>
+                            </button>
+                            <span id="zoom-level" class="text-sm w-8 text-center">100%</span>
+                            <button class="zoom-btn" id="zoom-in">
+                                <i class="fa fa-search-plus"></i>
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div class="canvas-container flex-grow min-h-[400px] relative" id="preview-canvas">
+                        <!-- 初始状态 -->
+                        <div id="initial-state" class="text-center p-8 max-w-md">
+                            <i class="fa fa-image text-5xl text-gray-300 mb-4"></i>
+                            <h3 class="text-lg font-medium mb-2">导入图片开始编辑</h3>
+                            <p class="text-gray-500 text-sm">支持 JPG、PNG、TIFF 等常见格式</p>
+                            <label for="initial-import" class="mt-4 inline-block px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors cursor-pointer">
+                                <i class="fa fa-upload mr-1"></i> 选择图片
+                            </label>
+                            <input type="file" id="initial-import" accept="image/*" class="hidden">
+                        </div>
+                        
+                        <!-- 图片编辑区域 -->
+                        <div id="image-editor" class="hidden absolute inset-0 overflow-hidden">
+                            <img id="original-image" class="hidden absolute top-0 left-0" alt="原始图片">
+                            <canvas id="edit-canvas" class="absolute top-0 left-0"></canvas>
+                            
+                            <!-- 对比视图指示器 -->
+                            <div id="compare-divider" class="hidden absolute top-0 bottom-0 w-1 bg-white cursor-ew-resize">
+                                <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-white border-2 border-gray-300 shadow-md"></div>
+                            </div>
+                        </div>
+                        
+                        <!-- 加载状态 -->
+                        <div id="loading-indicator" class="hidden absolute inset-0 bg-black/5 flex items-center justify-center">
+                            <div class="bg-white p-4 rounded-lg shadow-lg flex items-center gap-3">
+                                <i class="fa fa-circle-o-notch fa-spin text-xl text-primary"></i>
+                                <span>处理中...</span>
+                            </div>
+                        </div>
+                        
+                        <!-- 修复工具指示器 -->
+                        <div id="repair-indicator" class="brush-size-indicator hidden" style="width: 20px; height: 20px;"></div>
+                    </div>
+                    
+                    <div class="mt-4 flex justify-between items-center text-sm text-gray-500">
+                        <div id="image-dimensions">- x - 像素</div>
+                        <div class="flex items-center gap-3">
+                            <button id="fit-to-screen" class="flex items-center gap-1 hover:text-primary transition-colors">
+                                <i class="fa fa-expand"></i>
+                                <span>适应屏幕</span>
+                            </button>
+                            <button id="reset-view" class="flex items-center gap-1 hover:text-primary transition-colors">
+                                <i class="fa fa-refresh"></i>
+                                <span>重置视图</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 右侧控制面板 -->
+            <div class="lg:col-span-3 space-y-4">
+                <!-- 去噪控制 -->
+                <div class="tool-controls control-panel" data-for="denoise">
+                    <h3 class="text-base font-semibold mb-4">去噪设置</h3>
+                    
+                    <div class="mb-4">
+                        <div class="flex justify-between mb-1">
+                            <label class="text-sm">降噪强度</label>
+                            <span class="text-sm text-primary" id="denoise-value">50%</span>
+                        </div>
+                        <input type="range" min="0" max="100" value="50" class="slider-control" id="denoise-slider">
+                        <p class="text-xs text-gray-500 mt-1">较高的值会去除更多噪点，但可能损失细节</p>
+                    </div>
+                    
+                    <div class="mb-4">
+                        <label class="text-sm font-medium mb-2 block">降噪类型</label>
+                        <div class="grid grid-cols-2 gap-2">
+                            <button class="px-3 py-2 text-sm bg-primary text-white rounded-lg">高斯去噪</button>
+                            <button class="px-3 py-2 text-sm bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors">均值滤波</button>
+                            <button class="px-3 py-2 text-sm bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors">中值滤波</button>
+                            <button class="px-3 py-2 text-sm bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors">双边滤波</button>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-4">
+                        <label class="flex items-center gap-2 mb-2">
+                            <input type="checkbox" class="rounded text-primary" checked>
+                            <span class="text-sm">保留边缘细节</span>
+                        </label>
+                        <label class="flex items-center gap-2">
+                            <input type="checkbox" class="rounded text-primary">
+                            <span class="text-sm">减少彩色噪点</span>
+                        </label>
+                    </div>
+                    
+                    <button class="w-full py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors" id="apply-denoise">
+                        应用去噪
+                    </button>
+                </div>
+                
+                <!-- 锐化/模糊控制 -->
+                <div class="tool-controls control-panel hidden" data-for="sharpness">
+                    <h3 class="text-base font-semibold mb-4">锐化/模糊设置</h3>
+                    
+                    <div class="mb-4">
+                        <div class="flex justify-between mb-1">
+                            <label class="text-sm">强度</label>
+                            <span class="text-sm text-primary" id="sharpness-value">0%</span>
+                        </div>
+                        <input type="range" min="-100" max="100" value="0" class="slider-control" id="sharpness-slider">
+                        <div class="flex justify-between text-xs text-gray-500 mt-1">
+                            <span>模糊</span>
+                            <span>原图</span>
+                            <span>锐化</span>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-4">
+                        <label class="text-sm font-medium mb-2 block">算法选择</label>
+                        <select class="w-full p-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/50">
+                            <option>高斯模糊/锐化</option>
+                            <option>拉普拉斯锐化</option>
+                            <option>USM锐化</option>
+                            <option>运动模糊</option>
+                            <option>径向模糊</option>
+                        </select>
+                    </div>
+                    
+                    <div class="mb-4">
+                        <label class="text-sm">半径</label>
+                        <input type="range" min="0" max="20" value="1" class="slider-control mt-1">
+                    </div>
+                    
+                    <button class="w-full py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors">
+                        应用效果
+                    </button>
+                </div>
+                
+                <!-- 红眼去除控制 -->
+                <div class="tool-controls control-panel hidden" data-for="redeye">
+                    <h3 class="text-base font-semibold mb-4">红眼去除</h3>
+                    
+                    <p class="text-sm text-gray-600 mb-4">点击图片中的红眼区域进行修复</p>
+                    
+                    <div class="mb-4">
+                        <div class="flex justify-between mb-1">
+                            <label class="text-sm">修复范围</label>
+                            <span class="text-sm text-primary">50%</span>
+                        </div>
+                        <input type="range" min="10" max="100" value="50" class="slider-control">
+                    </div>
+                    
+                    <div class="mb-4">
+                        <label class="text-sm font-medium mb-2 block">瞳孔颜色</label>
+                        <div class="grid grid-cols-5 gap-2">
+                            <button class="w-full aspect-square rounded-full bg-black border-2 border-transparent ring-1 ring-gray-200 focus:border-primary focus:outline-none"></button>
+                            <button class="w-full aspect-square rounded-full bg-gray-700 border-2 border-transparent ring-1 ring-gray-200 focus:border-primary focus:outline-none"></button>
+                            <button class="w-full aspect-square rounded-full bg-gray-500 border-2 border-transparent ring-1 ring-gray-200 focus:border-primary focus:outline-none"></button>
+                            <button class="w-full aspect-square rounded-full bg-blue-900 border-2 border-transparent ring-1 ring-gray-200 focus:border-primary focus:outline-none"></button>
+                            <button class="w-full aspect-square rounded-full bg-green-900 border-2 border-transparent ring-1 ring-gray-200 focus:border-primary focus:outline-none"></button>
+                        </div>
+                    </div>
+                    
+                    <button class="w-full py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors">
+                        自动检测红眼
+                    </button>
+                </div>
+                
+                <!-- 修复瑕疵控制 -->
+                <div class="tool-controls control-panel hidden" data-for="repair">
+                    <h3 class="text-base font-semibold mb-4">修复工具</h3>
+                    
+                    <p class="text-sm text-gray-600 mb-4">使用修复工具去除划痕、斑点和其他瑕疵</p>
+                    
+                    <div class="mb-4">
+                        <label class="text-sm font-medium mb-2 block">工具类型</label>
+                        <div class="grid grid-cols-3 gap-2">
+                            <button class="py-2 text-sm bg-primary text-white rounded-lg">修复</button>
+                            <button class="py-2 text-sm bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors">克隆</button>
+                            <button class="py-2 text-sm bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors">修补</button>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-4">
+                        <div class="flex justify-between mb-1">
+                            <label class="text-sm">画笔大小</label>
+                            <span class="text-sm text-primary" id="brush-size-value">20px</span>
+                        </div>
+                        <input type="range" min="1" max="100" value="20" class="slider-control" id="brush-size-slider">
+                    </div>
+                    
+                    <div class="mb-4">
+                        <div class="flex justify-between mb-1">
+                            <label class="text-sm">硬度</label>
+                            <span class="text-sm text-primary">50%</span>
+                        </div>
+                        <input type="range" min="0" max="100" value="50" class="slider-control">
+                    </div>
+                    
+                    <button class="w-full py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors">
+                        自动修复瑕疵
+                    </button>
+                </div>
+                
+                <!-- 去水印控制 -->
+                <div class="tool-controls control-panel hidden" data-for="watermark">
+                    <h3 class="text-base font-semibold mb-4">去水印</h3>
+                    
+                    <p class="text-sm text-gray-600 mb-4">选择水印区域进行去除</p>
+                    
+                    <div class="mb-4">
+                        <label class="text-sm font-medium mb-2 block">去除方法</label>
+                        <div class="grid grid-cols-1 gap-2">
+                            <button class="py-2 text-sm bg-primary text-white rounded-lg flex items-center justify-center gap-2">
+                                <i class="fa fa-magic"></i> 智能去除
+                            </button>
+                            <button class="py-2 text-sm bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors flex items-center justify-center gap-2">
+                                <i class="fa fa-square-o"></i> 选择区域
+                            </button>
+                            <button class="py-2 text-sm bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors flex items-center justify-center gap-2">
+                                <i class="fa fa-eraser"></i> 橡皮擦工具
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-4 p-3 bg-gray-50 rounded-lg border border-gray-200">
+                        <h4 class="text-sm font-medium mb-2">检测到的水印</h4>
+                        <p class="text-xs text-gray-500 mb-2">未检测到水印，请手动选择</p>
+                        <button class="text-xs text-primary hover:underline">手动标记水印区域</button>
+                    </div>
+                    
+                    <button class="w-full py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors">
+                        去除选中水印
+                    </button>
+                </div>
+                
+                <!-- 超分辨率控制 -->
+                <div class="tool-controls control-panel hidden" data-for="superres">
+                    <h3 class="text-base font-semibold mb-4">超分辨率重建</h3>
+                    
+                    <p class="text-sm text-gray-600 mb-4">提高图片分辨率和细节质量</p>
+                    
+                    <div class="mb-4">
+                        <label class="text-sm font-medium mb-2 block">放大倍数</label>
+                        <div class="grid grid-cols-4 gap-2">
+                            <button class="py-2 text-sm bg-primary text-white rounded-lg">2x</button>
+                            <button class="py-2 text-sm bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors">4x</button>
+                            <button class="py-2 text-sm bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors">8x</button>
+                            <button class="py-2 text-sm bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors">自定义</button>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-4">
+                        <label class="text-sm font-medium mb-2 block">重建模型</label>
+                        <select class="w-full p-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/50">
+                            <option>标准模型 (平衡速度和质量)</option>
+                            <option>高清模型 (更多细节)</option>
+                            <option>快速模型 (更快处理)</option>
+                            <option>人像优化 (针对人脸优化)</option>
+                            <option>风景优化 (针对自然风景)</option>
+                        </select>
+                    </div>
+                    
+                    <div class="p-3 bg-blue-50 rounded-lg border border-blue-100 mb-4">
+                        <div class="flex items-start gap-2">
+                            <i class="fa fa-info-circle text-primary mt-0.5"></i>
+                            <p class="text-xs text-gray-600">超分辨率处理可能需要较长时间，取决于图片大小和所选放大倍数。</p>
+                        </div>
+                    </div>
+                    
+                    <button class="w-full py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors">
+                        开始重建
+                    </button>
+                </div>
+                
+                <!-- 对比控制 -->
+                <div class="tool-controls control-panel hidden" data-for="compare">
+                    <h3 class="text-base font-semibold mb-4">对比效果</h3>
+                    
+                    <p class="text-sm text-gray-600 mb-4">比较原图和编辑后的效果</p>
+                    
+                    <div class="mb-4">
+                        <label class="text-sm font-medium mb-2 block">对比方式</label>
+                        <div class="grid grid-cols-2 gap-2">
+                            <button class="py-2 text-sm bg-primary text-white rounded-lg">左右对比</button>
+                            <button class="py-2 text-sm bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors">上下对比</button>
+                            <button class="py-2 text-sm bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors">叠加对比</button>
+                            <button class="py-2 text-sm bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors">切换对比</button>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-4">
+                        <label class="flex items-center gap-2 mb-2">
+                            <input type="checkbox" class="rounded text-primary" checked>
+                            <span class="text-sm">显示差异高亮</span>
+                        </label>
+                        <label class="flex items-center gap-2">
+                            <input type="checkbox" class="rounded text-primary">
+                            <span class="text-sm">放大差异区域</span>
+                        </label>
+                    </div>
+                    
+                    <button class="w-full py-2 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors" id="close-compare">
+                        关闭对比
+                    </button>
+                </div>
+                
+                <!-- 预设控制 -->
+                <div class="tool-controls control-panel hidden" data-for="presets">
+                    <h3 class="text-base font-semibold mb-4">推荐预设</h3>
+                    
+                    <p class="text-sm text-gray-600 mb-4">一键应用专业编辑效果</p>
+                    
+                    <div class="grid grid-cols-2 gap-3 mb-4">
+                        <div class="relative rounded-lg overflow-hidden cursor-pointer group">
+                            <img src="https://picsum.photos/150/100?random=10" alt="人像优化" class="w-full aspect-video object-cover">
+                            <div class="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent opacity-80 group-hover:opacity-100 transition-opacity"></div>
+                            <div class="absolute bottom-0 left-0 p-2 text-white">
+                                <p class="text-xs font-medium">人像优化</p>
+                            </div>
+                        </div>
+                        <div class="relative rounded-lg overflow-hidden cursor-pointer group">
+                            <img src="https://picsum.photos/150/100?random=11" alt="风景增强" class="w-full aspect-video object-cover">
+                            <div class="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent opacity-80 group-hover:opacity-100 transition-opacity"></div>
+                            <div class="absolute bottom-0 left-0 p-2 text-white">
+                                <p class="text-xs font-medium">风景增强</p>
+                            </div>
+                        </div>
+                        <div class="relative rounded-lg overflow-hidden cursor-pointer group">
+                            <img src="https://picsum.photos/150/100?random=12" alt="低光修复" class="w-full aspect-video object-cover">
+                            <div class="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent opacity-80 group-hover:opacity-100 transition-opacity"></div>
+                            <div class="absolute bottom-0 left-0 p-2 text-white">
+                                <p class="text-xs font-medium">低光修复</p>
+                            </div>
+                        </div>
+                        <div class="relative rounded-lg overflow-hidden cursor-pointer group">
+                            <img src="https://picsum.photos/150/100?random=13" alt="老照片修复" class="w-full aspect-video object-cover">
+                            <div class="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent opacity-80 group-hover:opacity-100 transition-opacity"></div>
+                            <div class="absolute bottom-0 left-0 p-2 text-white">
+                                <p class="text-xs font-medium">老照片修复</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <button class="w-full py-2 border border-dashed border-gray-300 text-gray-500 rounded-lg hover:bg-gray-50 transition-colors">
+                        <i class="fa fa-plus mr-1"></i> 保存当前设置为预设
+                    </button>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- 底部状态栏 -->
+    <footer class="bg-white border-t border-gray-200 py-3">
+        <div class="container mx-auto px-4">
+            <div class="flex flex-col sm:flex-row justify-between items-center gap-2 text-sm text-gray-500">
+                <div>
+                    <span id="edit-status">就绪</span>
+                    <span id="undo-count" class="hidden sm:inline ml-4">可撤销: 0 步</span>
+                </div>
+                <div class="flex items-center gap-4">
+                    <button class="hover:text-primary transition-colors" title="帮助">
+                        <i class="fa fa-question-circle"></i>
+                    </button>
+                    <button class="hover:text-primary transition-colors" title="教程">
+                        <i class="fa fa-play-circle"></i>
+                    </button>
+                    <button class="hover:text-primary transition-colors" title="设置">
+                        <i class="fa fa-cog"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <!-- 提示弹窗 -->
+    <div id="toast-notification" class="fixed bottom-4 right-4 bg-dark text-white px-4 py-2 rounded-lg shadow-lg transform translate-y-20 opacity-0 transition-all duration-300 flex items-center gap-2 z-50">
+        <i class="fa fa-info-circle"></i>
+        <span id="toast-message">操作成功</span>
+    </div>
+
+    <script>
+        // 全局状态管理
+        const state = {
+            currentTool: 'denoise',
+            imageLoaded: false,
+            originalImage: null,
+            workingCanvas: null,
+            context: null,
+            zoomLevel: 100,
+            panX: 0,
+            panY: 0,
+            isDragging: false,
+            lastX: 0,
+            lastY: 0,
+            editHistory: [],
+            historyIndex: -1,
+            brushSize: 20,
+            compareMode: false
+        };
+
+        // DOM 元素
+        const elements = {
+            // 工具按钮
+            toolButtons: document.querySelectorAll('.tool-btn'),
+            toolControls: document.querySelectorAll('.tool-controls'),
+            
+            // 图片导入
+            importImage: document.getElementById('import-image'),
+            initialImport: document.getElementById('initial-import'),
+            exportImage: document.getElementById('export-image'),
+            
+            // 编辑区域
+            initialState: document.getElementById('initial-state'),
+            imageEditor: document.getElementById('image-editor'),
+            originalImage: document.getElementById('original-image'),
+            editCanvas: document.getElementById('edit-canvas'),
+            previewCanvas: document.getElementById('preview-canvas'),
+            
+            // 工具控制
+            denoiseSlider: document.getElementById('denoise-slider'),
+            denoiseValue: document.getElementById('denoise-value'),
+            sharpnessSlider: document.getElementById('sharpness-slider'),
+            sharpnessValue: document.getElementById('sharpness-value'),
+            brushSizeSlider: document.getElementById('brush-size-slider'),
+            brushSizeValue: document.getElementById('brush-size-value'),
+            repairIndicator: document.getElementById('repair-indicator'),
+            
+            // 视图控制
+            zoomIn: document.getElementById('zoom-in'),
+            zoomOut: document.getElementById('zoom-out'),
+            zoomLevel: document.getElementById('zoom-level'),
+            fitToScreen: document.getElementById('fit-to-screen'),
+            resetView: document.getElementById('reset-view'),
+            imageDimensions: document.getElementById('image-dimensions'),
+            
+            // 对比功能
+            compareDivider: document.getElementById('compare-divider'),
+            compareButton: document.querySelector('[data-tool="compare"]'),
+            closeCompare: document.getElementById('close-compare'),
+            
+            // 历史记录
+            undoBtn: document.getElementById('undo-btn'),
+            redoBtn: document.getElementById('redo-btn'),
+            undoCount: document.getElementById('undo-count'),
+            
+            // 状态和提示
+            editStatus: document.getElementById('edit-status'),
+            loadingIndicator: document.getElementById('loading-indicator'),
+            toastNotification: document.getElementById('toast-notification'),
+            toastMessage: document.getElementById('toast-message')
+        };
+
+        // 初始化应用
+        function initApp() {
+            // 设置画布上下文
+            state.workingCanvas = elements.editCanvas;
+            state.context = state.workingCanvas.getContext('2d');
+            
+            // 初始化事件监听
+            initEventListeners();
+            
+            // 更新UI状态
+            updateUIState();
+        }
+
+        // 初始化事件监听
+        function initEventListeners() {
+            // 工具按钮切换
+            elements.toolButtons.forEach(button => {
+                button.addEventListener('click', () => {
+                    const tool = button.dataset.tool;
+                    switchTool(tool);
+                });
+            });
+            
+            // 图片导入
+            elements.importImage.addEventListener('change', handleImageImport);
+            elements.initialImport.addEventListener('change', handleImageImport);
+            
+            // 导出图片
+            elements.exportImage.addEventListener('click', exportImage);
+            
+            // 去噪滑块
+            elements.denoiseSlider.addEventListener('input', (e) => {
+                elements.denoiseValue.textContent = `${e.target.value}%`;
+                if (state.imageLoaded) {
+                    previewDenoise(e.target.value);
+                }
+            });
+            
+            // 锐化/模糊滑块
+            elements.sharpnessSlider.addEventListener('input', (e) => {
+                elements.sharpnessValue.textContent = `${e.target.value}%`;
+                if (state.imageLoaded) {
+                    previewSharpness(e.target.value);
+                }
+            });
+            
+            // 画笔大小滑块
+            elements.brushSizeSlider.addEventListener('input', (e) => {
+                const size = parseInt(e.target.value);
+                state.brushSize = size;
+                elements.brushSizeValue.textContent = `${size}px`;
+                elements.repairIndicator.style.width = `${size}px`;
+                elements.repairIndicator.style.height = `${size}px`;
+            });
+            
+            // 缩放控制
+            elements.zoomIn.addEventListener('click', () => {
+                setZoom(state.zoomLevel + 25);
+            });
+            
+            elements.zoomOut.addEventListener('click', () => {
+                setZoom(state.zoomLevel - 25);
+            });
+            
+            elements.fitToScreen.addEventListener('click', fitImageToScreen);
+            elements.resetView.addEventListener('click', resetView);
+            
+            // 画布交互
+            elements.previewCanvas.addEventListener('mousedown', startDrag);
+            document.addEventListener('mousemove', drag);
+            document.addEventListener('mouseup', endDrag);
+            document.addEventListener('mouseleave', endDrag);
+            
+            // 修复工具交互
+            elements.editCanvas.addEventListener('mousemove', handleCanvasMouseMove);
+            elements.editCanvas.addEventListener('mousedown', handleCanvasClick);
+            
+            // 对比功能
+            elements.compareButton.addEventListener('click', toggleCompareMode);
+            elements.closeCompare.addEventListener('click', toggleCompareMode);
+            elements.compareDivider.addEventListener('mousedown', startDividerDrag);
+            
+            // 历史记录控制
+            elements.undoBtn.addEventListener('click', undoEdit);
+            elements.redoBtn.addEventListener('click', redoEdit);
+            
+            // 应用去噪按钮
+            document.getElementById('apply-denoise').addEventListener('click', applyDenoise);
+        }
+
+        // 处理图片导入
+        function handleImageImport(e) {
+            if (!e.target.files || e.target.files.length === 0) return;
+            
+            const file = e.target.files[0];
+            if (!file.type.match('image.*')) {
+                showToast('请选择有效的图片文件');
+                return;
+            }
+            
+            showLoading();
+            
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                const img = new Image();
+                img.onload = () => {
+                    // 隐藏初始状态，显示编辑区域
+                    elements.initialState.classList.add('hidden');
+                    elements.imageEditor.classList.remove('hidden');
+                    
+                    // 设置图片和画布
+                    elements.originalImage.src = event.target.result;
+                    state.originalImage = img;
+                    
+                    // 设置画布尺寸
+                    state.workingCanvas.width = img.width;
+                    state.workingCanvas.height = img.height;
+                    
+                    // 绘制初始图像
+                    state.context.drawImage(img, 0, 0);
+                    
+                    // 保存初始状态到历史记录
+                    saveToHistory();
+                    
+                    // 更新状态
+                    state.imageLoaded = true;
+                    elements.imageDimensions.textContent = `${img.width} x ${img.height} 像素`;
+                    
+                    // 重置视图
+                    resetView();
+                    
+                    // 更新UI状态
+                    updateUIState();
+                    
+                    hideLoading();
+                    showToast('图片导入成功');
+                };
+                img.src = event.target.result;
+            };
+            reader.readAsDataURL(file);
+        }
+
+        // 切换工具
+        function switchTool(tool) {
+            // 更新当前工具
+            state.currentTool = tool;
+            
+            // 更新工具按钮状态
+            elements.toolButtons.forEach(button => {
+                if (button.dataset.tool === tool) {
+                    button.classList.add('tool-btn-active');
+                } else {
+                    button.classList.remove('tool-btn-active');
+                }
+            });
+            
+            // 显示对应的控制面板
+            elements.toolControls.forEach(panel => {
+                if (panel.dataset.for === tool) {
+                    panel.classList.remove('hidden');
+                } else {
+                    panel.classList.add('hidden');
+                }
+            });
+            
+            // 特殊工具处理
+            if (tool === 'repair') {
+                elements.repairIndicator.classList.remove('hidden');
+            } else {
+                elements.repairIndicator.classList.add('hidden');
+            }
+            
+            // 如果退出对比模式
+            if (tool !== 'compare' && state.compareMode) {
+                toggleCompareMode();
+            }
+            
+            updateEditStatus(`已选择 ${getToolDisplayName(tool)} 工具`);
+        }
+
+        // 获取工具显示名称
+        function getToolDisplayName(tool) {
+            const toolNames = {
+                'denoise': '去噪',
+                'sharpness': '锐化/模糊',
+                'redeye': '红眼去除',
+                'repair': '修复瑕疵',
+                'watermark': '去水印',
+                'superres': '超分辨率',
+                'compare': '对比',
+                'presets': '预设'
+            };
+            return toolNames[tool] || tool;
+        }
+
+        // 预览去噪效果
+        function previewDenoise(strength) {
+            if (!state.imageLoaded) return;
+            
+            // 保存当前状态
+            const tempCanvas = document.createElement('canvas');
+            const tempCtx = tempCanvas.getContext('2d');
+            tempCanvas.width = state.workingCanvas.width;
+            tempCanvas.height = state.workingCanvas.height;
+            tempCtx.drawImage(state.workingCanvas, 0, 0);
+            
+            // 应用去噪效果 (这里使用简单的高斯模糊模拟)
+            const radius = Math.max(0.5, strength / 20);
+            applyGaussianBlur(state.context, 0, 0, state.workingCanvas.width, state.workingCanvas.height, radius);
+            
+            // 更新状态
+            updateEditStatus(`预览去噪效果 (强度: ${strength}%)`);
+        }
+
+        // 应用去噪
+        function applyDenoise() {
+            if (!state.imageLoaded) return;
+            
+            showLoading();
+            updateEditStatus('正在应用去噪效果...');
+            
+            // 模拟处理延迟
+            setTimeout(() => {
+                // 保存到历史记录
+                saveToHistory();
+                
+                hideLoading();
+                showToast('去噪效果已应用');
+                updateEditStatus('去噪效果应用完成');
+            }, 800);
+        }
+
+        // 预览锐化/模糊效果
+        function previewSharpness(strength) {
+            if (!state.imageLoaded) return;
+            
+            // 保存当前状态
+            const tempCanvas = document.createElement('canvas');
+            const tempCtx = tempCanvas.getContext('2d');
+            tempCanvas.width = state.workingCanvas.width;
+            tempCanvas.height = state.workingCanvas.height;
+            tempCtx.drawImage(state.workingCanvas, 0, 0);
+            
+            if (strength > 0) {
+                // 应用锐化
+                applySharpen(state.context, strength / 100);
+                updateEditStatus(`预览锐化效果 (强度: ${strength}%)`);
+            } else if (strength < 0) {
+                // 应用模糊
+                const radius = Math.max(0.5, Math.abs(strength) / 20);
+                applyGaussianBlur(state.context, 0, 0, state.workingCanvas.width, state.workingCanvas.height, radius);
+                updateEditStatus(`预览模糊效果 (强度: ${Math.abs(strength)}%)`);
+            } else {
+                // 恢复原图
+                state.context.drawImage(tempCanvas, 0, 0);
+                updateEditStatus('原图效果');
+            }
+        }
+
+        // 处理画布鼠标移动
+        function handleCanvasMouseMove(e) {
+            if (!state.imageLoaded) return;
+            
+            // 获取相对画布的坐标
+            const rect = elements.editCanvas.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+            
+            // 修复工具指示器位置
+            if (state.currentTool === 'repair') {
+                elements.repairIndicator.style.left = `${x - state.brushSize/2}px`;
+                elements.repairIndicator.style.top = `${y - state.brushSize/2}px`;
+            }
+        }
+
+        // 处理画布点击
+        function handleCanvasClick(e) {
+            if (!state.imageLoaded) return;
+            
+            // 获取相对画布的坐标
+            const rect = elements.editCanvas.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+            
+            // 根据当前工具处理点击
+            switch (state.currentTool) {
+                case 'repair':
+                    applyRepair(x, y, state.brushSize);
+                    break;
+                case 'redeye':
+                    removeRedEye(x, y, 30);
+                    break;
+            }
+        }
+
+        // 应用修复
+        function applyRepair(x, y, size) {
+            if (!state.imageLoaded) return;
+            
+            // 保存当前状态
+            saveToHistory();
+            
+            // 简单的修复模拟 - 实际应用中需要更复杂的算法
+            const ctx = state.context;
+            
+            // 在点击位置周围取平均颜色
+            ctx.beginPath();
+            ctx.arc(x, y, size/2, 0, Math.PI * 2);
+            ctx.fillStyle = getAverageColor(x, y, size/2);
+            ctx.fill();
+            
+            // 稍微模糊边缘使其融合
+            applyGaussianBlur(ctx, x - size/2, y - size/2, size, size, 2);
+            
+            showToast('已应用修复');
+            updateEditStatus('修复操作已完成');
+        }
+
+        // 去除红眼
+        function removeRedEye(x, y, size) {
+            if (!state.imageLoaded) return;
+            
+            // 保存当前状态
+            saveToHistory();
+            
+            // 简单的红眼去除模拟
+            const imageData = state.context.getImageData(x - size/2, y - size/2, size, size);
+            const data = imageData.data;
+            
+            // 遍历像素，降低红色通道，增加蓝色和绿色通道
+            for (let i = 0; i < data.length; i += 4) {
+                // 检测红色像素
+                if (data[i] > 150 && data[i+1] < 100 && data[i+2] < 100) {
+                    data[i] = Math.min(100, data[i]); // 降低红色
+                    data[i+1] = Math.min(255, data[i+1] + 50); // 增加绿色
+                    data[i+2] = Math.min(255, data[i+2] + 30); // 增加蓝色
+                }
+            }
+            
+            state.context.putImageData(imageData, x - size/2, y - size/2);
+            
+            showToast('已去除红眼');
+            updateEditStatus('红眼去除操作已完成');
+        }
+
+        // 切换对比模式
+        function toggleCompareMode() {
+            if (!state.imageLoaded) return;
+            
+            state.compareMode = !state.compareMode;
+            
+            if (state.compareMode) {
+                elements.compareDivider.classList.remove('hidden');
+                elements.compareDivider.style.left = '50%';
+                updateEditStatus('对比模式: 左侧原图，右侧编辑后');
+                drawCompareView(50);
+            } else {
+                elements.compareDivider.classList.add('hidden');
+                // 重绘当前编辑状态
+                state.context.drawImage(state.workingCanvas, 0, 0);
+                updateEditStatus('已退出对比模式');
+            }
+        }
+
+        // 开始拖动对比分隔线
+        function startDividerDrag(e) {
+            e.preventDefault();
+            const moveHandler = (e) => {
+                if (!state.compareMode) return;
+                
+                const rect = elements.previewCanvas.getBoundingClientRect();
+                const x = e.clientX - rect.left;
+                const percentage = (x / rect.width) * 100;
+                
+                elements.compareDivider.style.left = `${percentage}%`;
+                drawCompareView(percentage);
+            };
+            
+            const upHandler = () => {
+                document.removeEventListener('mousemove', moveHandler);
+                document.removeEventListener('mouseup', upHandler);
+            };
+            
+            document.addEventListener('mousemove', moveHandler);
+            document.addEventListener('mouseup', upHandler);
+        }
+
+        // 绘制对比视图
+        function drawCompareView(percentage) {
+            if (!state.imageLoaded) return;
+            
+            const width = state.workingCanvas.width;
+            const splitX = (percentage / 100) * width;
+            
+            // 先绘制编辑后的图像
+            state.context.drawImage(state.workingCanvas, 0, 0);
+            
+            // 在左侧绘制原图的一部分
+            state.context.save();
+            state.context.beginPath();
+            state.context.rect(0, 0, splitX, state.workingCanvas.height);
+            state.context.clip();
+            state.context.drawImage(state.originalImage, 0, 0);
+            state.context.restore();
+        }
+
+        // 缩放控制
+        function setZoom(level) {
+            // 限制缩放范围
+            level = Math.max(25, Math.min(400, level));
+            state.zoomLevel = level;
+            
+            // 更新显示
+            elements.zoomLevel.textContent = `${level}%`;
+            
+            // 应用缩放
+            applyTransform();
+        }
+
+        // 适应图片到屏幕
+        function fitImageToScreen() {
+            if (!state.imageLoaded) return;
+            
+            const containerRect = elements.previewCanvas.getBoundingClientRect();
+            const imgWidth = state.originalImage.width;
+            const imgHeight = state.originalImage.height;
+            
+            // 计算缩放比例
+            const scaleX = containerRect.width / imgWidth;
+            const scaleY = containerRect.height / imgHeight;
+            const scale = Math.min(scaleX, scaleY, 1) * 100; // 最大100%
+            
+            // 应用缩放
+            setZoom(scale);
+            
+            // 重置平移
+            state.panX = 0;
+            state.panY = 0;
+            
+            applyTransform();
+        }
+
+        // 重置视图
+        function resetView() {
+            if (!state.imageLoaded) return;
+            
+            state.zoomLevel = 100;
+            state.panX = 0;
+            state.panY = 0;
+            
+            elements.zoomLevel.textContent = '100%';
+            applyTransform();
+        }
+
+        // 开始拖动
+        function startDrag(e) {
+            if (!state.imageLoaded) return;
+            
+            // 检查是否点击在图片上
+            const rect = elements.previewCanvas.getBoundingClientRect();
+            state.isDragging = true;
+            state.lastX = e.clientX - rect.left;
+            state.lastY = e.clientY - rect.top;
+            
+            elements.previewCanvas.style.cursor = 'grabbing';
+        }
+
+        // 拖动
+        function drag(e) {
+            if (!state.imageLoaded || !state.isDragging) return;
+            
+            const rect = elements.previewCanvas.getBoundingClientRect();
+            const currentX = e.clientX - rect.left;
+            const currentY = e.clientY - rect.top;
+            
+            // 计算移动距离
+            const deltaX = currentX - state.lastX;
+            const deltaY = currentY - state.lastY;
+            
+            // 更新平移
+            state.panX += deltaX;
+            state.panY += deltaY;
+            
+            // 更新最后位置
+            state.lastX = currentX;
+            state.lastY = currentY;
+            
+            // 应用变换
+            applyTransform();
+        }
+
+        // 结束拖动
+        function endDrag() {
+            if (!state.imageLoaded) return;
+            
+            state.isDragging = false;
+            elements.previewCanvas.style.cursor = 'grab';
+        }
+
+        // 应用变换（缩放和平移）
+        function applyTransform() {
+            if (!state.imageLoaded) return;
+            
+            const scale = state.zoomLevel / 100;
+            
+            // 应用变换到画布
+            elements.editCanvas.style.transform = `scale(${scale}) translate(${state.panX / scale}px, ${state.panY / scale}px)`;
+            
+            // 如果在对比模式，需要重绘对比视图
+            if (state.compareMode) {
+                const rect = elements.previewCanvas.getBoundingClientRect();
+                const dividerLeft = parseFloat(elements.compareDivider.style.left);
+                drawCompareView(dividerLeft);
+            }
+        }
+
+        // 保存到历史记录
+        function saveToHistory() {
+            if (!state.imageLoaded) return;
+            
+            // 移除当前点之后的历史记录
+            if (state.historyIndex < state.editHistory.length - 1) {
+                state.editHistory = state.editHistory.slice(0, state.historyIndex + 1);
+            }
+            
+            // 保存当前画布状态
+            const dataURL = state.workingCanvas.toDataURL();
+            state.editHistory.push(dataURL);
+            state.historyIndex = state.editHistory.length - 1;
+            
+            // 更新历史记录UI
+            updateHistoryUI();
+        }
+
+        // 更新历史记录UI
+        function updateHistoryUI() {
+            elements.undoCount.textContent = `可撤销: ${state.historyIndex} 步`;
+            elements.undoBtn.disabled = state.historyIndex <= 0;
+            elements.redoBtn.disabled = state.historyIndex >= state.editHistory.length - 1;
+        }
+
+        // 撤销操作
+        function undoEdit() {
+            if (state.historyIndex <= 0) return;
+            
+            state.historyIndex--;
+            const dataURL = state.editHistory[state.historyIndex];
+            
+            // 恢复历史状态
+            const img = new Image();
+            img.onload = () => {
+                state.context.clearRect(0, 0, state.workingCanvas.width, state.workingCanvas.height);
+                state.context.drawImage(img, 0, 0);
+                updateHistoryUI();
+                showToast('已撤销操作');
+            };
+            img.src = dataURL;
+        }
+
+        // 重做操作
+        function redoEdit() {
+            if (state.historyIndex >= state.editHistory.length - 1) return;
+            
+            state.historyIndex++;
+            const dataURL = state.editHistory[state.historyIndex];
+            
+            // 恢复历史状态
+            const img = new Image();
+            img.onload = () => {
+                state.context.clearRect(0, 0, state.workingCanvas.width, state.workingCanvas.height);
+                state.context.drawImage(img, 0, 0);
+                updateHistoryUI();
+                showToast('已重做操作');
+            };
+            img.src = dataURL;
+        }
+
+        // 导出图片
+        function exportImage() {
+            if (!state.imageLoaded) return;
+            
+            showLoading();
+            updateEditStatus('正在准备导出图片...');
+            
+            // 模拟处理时间
+            setTimeout(() => {
+                // 创建下载链接
+                const link = document.createElement('a');
+                link.download = `edited-image-${new Date().getTime()}.png`;
+                link.href = state.workingCanvas.toDataURL('image/png');
+                link.click();
+                
+                hideLoading();
+                showToast('图片已导出');
+                updateEditStatus('图片导出完成');
+            }, 600);
+        }
+
+        // 显示加载状态
+        function showLoading() {
+            elements.loadingIndicator.classList.remove('hidden');
+        }
+
+        // 隐藏加载状态
+        function hideLoading() {
+            elements.loadingIndicator.classList.add('hidden');
+        }
+
+        // 显示提示消息
+        function showToast(message) {
+            elements.toastMessage.textContent = message;
+            elements.toastNotification.classList.remove('translate-y-20', 'opacity-0');
+            elements.toastNotification.classList.add('translate-y-0', 'opacity-100');
+            
+            // 3秒后隐藏
+            setTimeout(() => {
+                elements.toastNotification.classList.remove('translate-y-0', 'opacity-100');
+                elements.toastNotification.classList.add('translate-y-20', 'opacity-0');
+            }, 3000);
+        }
+
+        // 更新编辑状态
+        function updateEditStatus(message) {
+            elements.editStatus.textContent = message;
+        }
+
+        // 更新UI状态
+        function updateUIState() {
+            // 启用/禁用按钮
+            elements.exportImage.disabled = !state.imageLoaded;
+            elements.undoBtn.disabled = !state.imageLoaded || state.historyIndex <= 0;
+            elements.redoBtn.disabled = !state.imageLoaded || state.historyIndex >= state.editHistory.length - 1;
+            
+            // 更新鼠标样式
+            elements.previewCanvas.style.cursor = state.imageLoaded ? 'grab' : 'default';
+        }
+
+        // 工具函数: 获取平均颜色
+        function getAverageColor(x, y, radius) {
+            const ctx = state.context;
+            const imageData = ctx.getImageData(x - radius, y - radius, radius * 2, radius * 2);
+            const data = imageData.data;
+            
+            let r = 0, g = 0, b = 0, count = 0;
+            
+            // 采样像素，计算平均值（每隔2个像素采样一次以提高性能）
+            for (let i = 0; i < data.length; i += 8) {
+                r += data[i];
+                g += data[i + 1];
+                b += data[i + 2];
+                count++;
+            }
+            
+            r = Math.floor(r / count);
+            g = Math.floor(g / count);
+            b = Math.floor(b / count);
+            
+            return `rgb(${r}, ${g}, ${b})`;
+        }
+
+        // 工具函数: 应用高斯模糊 (简化版)
+        function applyGaussianBlur(ctx, x, y, width, height, radius) {
+            // 这是一个简化的高斯模糊实现
+            // 实际应用中可能需要更复杂的算法或使用专用库
+            ctx.filter = `blur(${radius}px)`;
+            ctx.drawImage(ctx.canvas, x, y, width, height, x, y, width, height);
+            ctx.filter = 'none';
+        }
+
+        // 工具函数: 应用锐化 (简化版)
+        function applySharpen(ctx, amount) {
+            // 获取图像数据
+            const imageData = ctx.getImageData(0, 0, ctx.canvas.width, ctx.canvas.height);
+            const data = imageData.data;
+            const width = imageData.width;
+            const height = imageData.height;
+            
+            // 创建临时数组存储处理后的像素
+            const output = new Uint8ClampedArray(data);
+            
+            // 锐化卷积核
+            const kernel = [
+                0, -amount, 0,
+                -amount, 1 + 4 * amount, -amount,
+                0, -amount, 0
+            ];
+            
+            // 应用卷积
+            for (let y = 1; y < height - 1; y++) {
+                for (let x = 1; x < width - 1; x++) {
+                    let r = 0, g = 0, b = 0;
+                    let index = 0;
+                    
+                    // 应用3x3卷积核
+                    for (let ky = -1; ky <= 1; ky++) {
+                        for (let kx = -1; kx <= 1; kx++) {
+                            const pixelIndex = ((y + ky) * width + (x + kx)) * 4;
+                            const weight = kernel[index++];
+                            
+                            r += data[pixelIndex] * weight;
+                            g += data[pixelIndex + 1] * weight;
+                            b += data[pixelIndex + 2] * weight;
+                        }
+                    }
+                    
+                    // 限制值在0-255范围内
+                    r = Math.max(0, Math.min(255, r));
+                    g = Math.max(0, Math.min(255, g));
+                    b = Math.max(0, Math.min(255, b));
+                    
+                    // 保存结果
+                    const outputIndex = (y * width + x) * 4;
+                    output[outputIndex] = r;
+                    output[outputIndex + 1] = g;
+                    output[outputIndex + 2] = b;
+                    // 保持alpha不变
+                }
+            }
+            
+            // 将处理后的图像数据放回画布
+            ctx.putImageData(new ImageData(output, width, height), 0, 0);
+        }
+
+        // 初始化应用
+        document.addEventListener('DOMContentLoaded', initApp);
+    </script>
+</body>
+</html>

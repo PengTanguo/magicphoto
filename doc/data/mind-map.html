@@ -1,0 +1,661 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>交互式思维导图</title>
+  <!-- 引入Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- 引入Font Awesome -->
+  <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+  
+  <!-- 配置Tailwind自定义颜色和字体 -->
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            primary: '#3B82F6',
+            secondary: '#10B981',
+            accent: '#F59E0B',
+            dark: '#1F2937',
+            light: '#F3F4F6'
+          },
+          fontFamily: {
+            inter: ['Inter', 'system-ui', 'sans-serif'],
+          },
+        },
+      }
+    }
+  </script>
+  
+  <!-- 自定义工具类 -->
+  <style type="text/tailwindcss">
+    @layer utilities {
+      .node-shadow {
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+      }
+      .node-transition {
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      }
+      .line-transition {
+        transition: all 0.5s ease-in-out;
+      }
+    }
+  </style>
+  
+  <style>
+    /* 基础样式 */
+    body {
+      overflow: auto;
+      background-color: #FAFAFA;
+      background-image: 
+        radial-gradient(#E5E7EB 1px, transparent 1px),
+        radial-gradient(#E5E7EB 1px, transparent 1px);
+      background-size: 40px 40px;
+      background-position: 0 0, 20px 20px;
+    }
+    
+    /* 连接线样式 */
+    .connection-line {
+      position: absolute;
+      background-color: #9CA3AF;
+      transform-origin: 0 0;
+      z-index: 10;
+    }
+    
+    /* 思维导图容器 */
+    #mind-map-container {
+      position: relative;
+      min-height: 80vh;
+      cursor: grab;
+    }
+    
+    #mind-map-container.grabbing {
+      cursor: grabbing;
+    }
+    
+    /* 节点样式 */
+    .mind-node {
+      position: absolute;
+      cursor: pointer;
+      user-select: none;
+      z-index: 100;
+    }
+    
+    .mind-node:hover {
+      transform: scale(1.02);
+    }
+    
+    /* 动画效果 */
+    @keyframes pulse {
+      0%, 100% {
+        box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.4);
+      }
+      50% {
+        box-shadow: 0 0 0 8px rgba(59, 130, 246, 0);
+      }
+    }
+    
+    .pulse-animation {
+      animation: pulse 2s infinite;
+    }
+  </style>
+</head>
+<body class="font-inter text-dark">
+  <!-- 顶部导航栏 -->
+  <header class="bg-white shadow-md fixed top-0 left-0 right-0 z-50 transition-all duration-300">
+    <div class="container mx-auto px-4 py-3 flex justify-between items-center">
+      <div class="flex items-center space-x-2">
+        <i class="fa fa-sitemap text-primary text-2xl"></i>
+        <h1 class="text-xl font-bold text-dark">思维导图工具</h1>
+      </div>
+      
+      <div class="flex items-center space-x-4">
+        <button id="zoom-in" class="p-2 rounded-full hover:bg-light transition-colors">
+          <i class="fa fa-search-plus text-primary"></i>
+        </button>
+        <button id="zoom-out" class="p-2 rounded-full hover:bg-light transition-colors">
+          <i class="fa fa-search-minus text-primary"></i>
+        </button>
+        <button id="reset-view" class="p-2 rounded-full hover:bg-light transition-colors">
+          <i class="fa fa-refresh text-primary"></i>
+        </button>
+        <button id="add-node" class="bg-primary hover:bg-primary/90 text-white px-4 py-2 rounded-lg transition-colors">
+          <i class="fa fa-plus mr-1"></i> 添加节点
+        </button>
+      </div>
+    </div>
+  </header>
+  
+  <!-- 主内容区 -->
+  <main class="container mx-auto px-4 pt-24 pb-16">
+    <!-- 思维导图容器 -->
+    <div id="mind-map-container" class="bg-white/50 rounded-xl p-4 shadow-lg">
+      <!-- 思维导图将通过JavaScript动态生成 -->
+    </div>
+    
+    <!-- 节点编辑面板 -->
+    <div id="node-editor" class="fixed bottom-4 left-1/2 transform -translate-x-1/2 bg-white rounded-lg shadow-xl p-4 w-80 hidden z-40">
+      <h3 class="font-semibold mb-2">编辑节点</h3>
+      <input type="text" id="node-text-input" class="w-full px-3 py-2 border border-gray-300 rounded-lg mb-3 focus:outline-none focus:ring-2 focus:ring-primary/50">
+      <div class="flex space-x-2">
+        <button id="save-node" class="flex-1 bg-primary text-white py-2 rounded-lg hover:bg-primary/90 transition-colors">保存</button>
+        <button id="delete-node" class="flex-1 bg-red-500 text-white py-2 rounded-lg hover:bg-red-600 transition-colors">删除</button>
+      </div>
+    </div>
+  </main>
+  
+  <!-- 底部信息 -->
+  <footer class="bg-dark text-white py-4">
+    <div class="container mx-auto px-4 text-center text-sm">
+      <p>交互式思维导图工具 &copy; 2023</p>
+      <p class="mt-1 text-gray-400">点击节点展开/折叠 | 拖拽移动节点 | 双击节点编辑</p>
+    </div>
+  </footer>
+
+  <script>
+    // 思维导图数据结构
+    const mindMapData = {
+      id: 'root',
+      text: '中心主题',
+      color: 'primary',
+      x: window.innerWidth / 2,
+      y: window.innerHeight / 2,
+      children: [
+        {
+          id: 'c1',
+          text: '分支一',
+          color: 'secondary',
+          x: window.innerWidth / 2 - 200,
+          y: window.innerHeight / 2 - 100,
+          children: [
+            { id: 'c1-1', text: '子项1-1', color: 'secondary', x: window.innerWidth / 2 - 350, y: window.innerHeight / 2 - 150 },
+            { id: 'c1-2', text: '子项1-2', color: 'secondary', x: window.innerWidth / 2 - 350, y: window.innerHeight / 2 - 50 }
+          ]
+        },
+        {
+          id: 'c2',
+          text: '分支二',
+          color: 'accent',
+          x: window.innerWidth / 2 + 200,
+          y: window.innerHeight / 2 - 100,
+          children: [
+            { id: 'c2-1', text: '子项2-1', color: 'accent', x: window.innerWidth / 2 + 350, y: window.innerHeight / 2 - 150 },
+            { id: 'c2-2', text: '子项2-2', color: 'accent', x: window.innerWidth / 2 + 350, y: window.innerHeight / 2 - 50,
+              children: [
+                { id: 'c2-2-1', text: '子项2-2-1', color: 'accent', x: window.innerWidth / 2 + 500, y: window.innerHeight / 2 - 70 }
+              ]
+            }
+          ]
+        },
+        {
+          id: 'c3',
+          text: '分支三',
+          color: 'primary',
+          x: window.innerWidth / 2,
+          y: window.innerHeight / 2 + 150,
+          children: [
+            { id: 'c3-1', text: '子项3-1', color: 'primary', x: window.innerWidth / 2 - 150, y: window.innerHeight / 2 + 250 },
+            { id: 'c3-2', text: '子项3-2', color: 'primary', x: window.innerWidth / 2 + 150, y: window.innerHeight / 2 + 250 }
+          ]
+        }
+      ]
+    };
+
+    // 全局状态
+    const state = {
+      scale: 1,
+      translateX: 0,
+      translateY: 0,
+      isDraggingMap: false,
+      dragStartX: 0,
+      dragStartY: 0,
+      selectedNode: null,
+      draggedNode: null,
+      nodes: new Map(),
+      connections: new Map()
+    };
+
+    // DOM元素
+    const container = document.getElementById('mind-map-container');
+    const nodeEditor = document.getElementById('node-editor');
+    const nodeTextInput = document.getElementById('node-text-input');
+    const saveNodeBtn = document.getElementById('save-node');
+    const deleteNodeBtn = document.getElementById('delete-node');
+    const zoomInBtn = document.getElementById('zoom-in');
+    const zoomOutBtn = document.getElementById('zoom-out');
+    const resetViewBtn = document.getElementById('reset-view');
+    const addNodeBtn = document.getElementById('add-node');
+
+    // 初始化思维导图
+    function initMindMap() {
+      renderNode(mindMapData);
+      renderConnections();
+      setupEventListeners();
+    }
+
+    // 渲染节点
+    function renderNode(nodeData, parent = null) {
+      // 创建节点元素
+      const node = document.createElement('div');
+      node.id = nodeData.id;
+      node.className = `mind-node node-shadow node-transition px-4 py-2 rounded-lg text-white max-w-[180px]`;
+      node.style.left = `${nodeData.x}px`;
+      node.style.top = `${nodeData.y}px`;
+      node.style.backgroundColor = `rgb(var(--${nodeData.color}-rgb), 1)`;
+      node.innerHTML = `
+        <div class="flex justify-between items-center">
+          <span>${nodeData.text}</span>
+          ${nodeData.children && nodeData.children.length > 0 ? 
+            `<i class="fa fa-chevron-down text-xs ml-2 expand-icon"></i>` : ''}
+        </div>
+      `;
+      
+      // 存储节点数据
+      nodeData.parent = parent;
+      node.data = nodeData;
+      node.isExpanded = true;
+      state.nodes.set(nodeData.id, node);
+      
+      // 添加到容器
+      container.appendChild(node);
+      
+      // 如果有子节点，递归渲染
+      if (nodeData.children && nodeData.children.length > 0) {
+        nodeData.children.forEach(child => renderNode(child, nodeData));
+      }
+    }
+
+    // 渲染连接线
+    function renderConnections() {
+      // 清除现有连接线
+      state.connections.forEach(conn => conn.remove());
+      state.connections.clear();
+      
+      // 递归创建连接线
+      function createConnections(nodeData) {
+        if (nodeData.children && nodeData.children.length > 0) {
+          nodeData.children.forEach(child => {
+            const parentNode = state.nodes.get(nodeData.id);
+            const childNode = state.nodes.get(child.id);
+            
+            if (parentNode && childNode) {
+              createConnection(parentNode, childNode, child.id);
+            }
+            
+            // 递归处理子节点
+            createConnections(child);
+          });
+        }
+      }
+      
+      // 从根节点开始创建连接线
+      createConnections(mindMapData);
+    }
+
+    // 创建两个节点之间的连接线
+    function createConnection(parentNode, childNode, connectionId) {
+      // 获取节点位置和尺寸
+      const parentRect = parentNode.getBoundingClientRect();
+      const childRect = childNode.getBoundingClientRect();
+      const containerRect = container.getBoundingClientRect();
+      
+      // 计算连接点（节点中心）
+      const parentX = parentNode.offsetLeft + parentRect.width / 2;
+      const parentY = parentNode.offsetTop + parentRect.height / 2;
+      const childX = childNode.offsetLeft + childRect.width / 2;
+      const childY = childNode.offsetTop + childRect.height / 2;
+      
+      // 计算线的长度和角度
+      const length = Math.sqrt(Math.pow(childX - parentX, 2) + Math.pow(childY - parentY, 2));
+      const angle = Math.atan2(childY - parentY, childX - parentX) * 180 / Math.PI;
+      
+      // 创建线元素
+      const line = document.createElement('div');
+      line.className = 'connection-line line-transition';
+      line.style.width = `${length}px`;
+      line.style.height = '2px';
+      line.style.left = `${parentX}px`;
+      line.style.top = `${parentY}px`;
+      line.style.transform = `rotate(${angle}deg)`;
+      
+      // 添加到容器并存储
+      container.appendChild(line);
+      state.connections.set(connectionId, line);
+      
+      return line;
+    }
+
+    // 更新连接线
+    function updateConnections() {
+      state.connections.forEach((line, childId) => {
+        const childNode = state.nodes.get(childId);
+        if (!childNode || !childNode.data.parent) return;
+        
+        const parentNode = state.nodes.get(childNode.data.parent.id);
+        if (parentNode) {
+          // 移除旧线
+          line.remove();
+          
+          // 创建新线
+          const newLine = createConnection(parentNode, childNode, childId);
+          state.connections.set(childId, newLine);
+        }
+      });
+    }
+
+    // 展开/折叠节点
+    function toggleNode(node) {
+      const nodeData = node.data;
+      node.isExpanded = !node.isExpanded;
+      
+      // 更新图标
+      const icon = node.querySelector('.expand-icon');
+      if (icon) {
+        icon.className = node.isExpanded ? 
+          'fa fa-chevron-down text-xs ml-2 expand-icon' : 
+          'fa fa-chevron-right text-xs ml-2 expand-icon';
+      }
+      
+      // 显示/隐藏子节点和连接线
+      if (nodeData.children && nodeData.children.length > 0) {
+        nodeData.children.forEach(child => {
+          const childNode = state.nodes.get(child.id);
+          const connection = state.connections.get(child.id);
+          
+          if (childNode) {
+            childNode.style.display = node.isExpanded ? 'block' : 'none';
+          }
+          
+          if (connection) {
+            connection.style.display = node.isExpanded ? 'block' : 'none';
+          }
+          
+          // 如果折叠父节点，递归折叠所有子节点
+          if (!node.isExpanded && childNode) {
+            childNode.isExpanded = false;
+            const childIcon = childNode.querySelector('.expand-icon');
+            if (childIcon) {
+              childIcon.className = 'fa fa-chevron-right text-xs ml-2 expand-icon';
+            }
+          }
+        });
+      }
+    }
+
+    // 设置事件监听器
+    function setupEventListeners() {
+      // 思维导图容器拖拽
+      container.addEventListener('mousedown', startDragMap);
+      document.addEventListener('mousemove', dragMap);
+      document.addEventListener('mouseup', endDragMap);
+      
+      // 节点点击事件（委托给容器）
+      container.addEventListener('click', (e) => {
+        const node = e.target.closest('.mind-node');
+        if (node && !state.draggedNode) {
+          toggleNode(node);
+        }
+      });
+      
+      // 节点双击编辑
+      container.addEventListener('dblclick', (e) => {
+        const node = e.target.closest('.mind-node');
+        if (node) {
+          openNodeEditor(node);
+        }
+      });
+      
+      // 节点拖拽
+      container.addEventListener('mousedown', startDragNode);
+      document.addEventListener('mousemove', dragNode);
+      document.addEventListener('mouseup', endDragNode);
+      
+      // 缩放控制
+      zoomInBtn.addEventListener('click', () => {
+        state.scale = Math.min(state.scale + 0.1, 2);
+        updateMapTransform();
+      });
+      
+      zoomOutBtn.addEventListener('click', () => {
+        state.scale = Math.max(state.scale - 0.1, 0.5);
+        updateMapTransform();
+      });
+      
+      resetViewBtn.addEventListener('click', () => {
+        state.scale = 1;
+        state.translateX = 0;
+        state.translateY = 0;
+        updateMapTransform();
+      });
+      
+      // 节点编辑器按钮
+      saveNodeBtn.addEventListener('click', saveNodeChanges);
+      deleteNodeBtn.addEventListener('click', deleteSelectedNode);
+      
+      // 添加新节点
+      addNodeBtn.addEventListener('click', addNewNode);
+      
+      // 窗口大小变化时重新计算位置
+      window.addEventListener('resize', () => {
+        updateConnections();
+      });
+    }
+
+    // 开始拖拽思维导图
+    function startDragMap(e) {
+      // 只有点击空白处才拖拽整个地图
+      if (e.target === container) {
+        state.isDraggingMap = true;
+        state.dragStartX = e.clientX - state.translateX;
+        state.dragStartY = e.clientY - state.translateY;
+        container.classList.add('grabbing');
+      }
+    }
+
+    // 拖拽思维导图
+    function dragMap(e) {
+      if (state.isDraggingMap) {
+        state.translateX = e.clientX - state.dragStartX;
+        state.translateY = e.clientY - state.dragStartY;
+        updateMapTransform();
+      }
+    }
+
+    // 结束拖拽思维导图
+    function endDragMap() {
+      state.isDraggingMap = false;
+      container.classList.remove('grabbing');
+    }
+
+    // 更新地图变换
+    function updateMapTransform() {
+      container.style.transform = `translate(${state.translateX}px, ${state.translateY}px) scale(${state.scale})`;
+    }
+
+    // 开始拖拽节点
+    function startDragNode(e) {
+      const node = e.target.closest('.mind-node');
+      if (node) {
+        e.stopPropagation(); // 防止触发地图拖拽
+        state.draggedNode = node;
+        state.dragStartX = e.clientX;
+        state.dragStartY = e.clientY;
+        node.classList.add('pulse-animation');
+      }
+    }
+
+    // 拖拽节点
+    function dragNode(e) {
+      if (state.draggedNode) {
+        const dx = e.clientX - state.dragStartX;
+        const dy = e.clientY - state.dragStartY;
+        
+        // 计算新位置（考虑缩放）
+        const node = state.draggedNode;
+        const currentX = parseFloat(node.style.left);
+        const currentY = parseFloat(node.style.top);
+        
+        // 更新节点位置
+        const newX = currentX + dx / state.scale;
+        const newY = currentY + dy / state.scale;
+        node.style.left = `${newX}px`;
+        node.style.top = `${newY}px`;
+        
+        // 更新数据中的位置
+        node.data.x = newX;
+        node.data.y = newY;
+        
+        // 更新起始位置
+        state.dragStartX = e.clientX;
+        state.dragStartY = e.clientY;
+        
+        // 更新连接线
+        updateConnections();
+      }
+    }
+
+    // 结束拖拽节点
+    function endDragNode() {
+      if (state.draggedNode) {
+        state.draggedNode.classList.remove('pulse-animation');
+        state.draggedNode = null;
+      }
+    }
+
+    // 打开节点编辑器
+    function openNodeEditor(node) {
+      state.selectedNode = node;
+      nodeTextInput.value = node.data.text;
+      nodeEditor.classList.remove('hidden');
+      nodeTextInput.focus();
+    }
+
+    // 保存节点修改
+    function saveNodeChanges() {
+      if (state.selectedNode) {
+        const newText = nodeTextInput.value.trim();
+        if (newText) {
+          state.selectedNode.data.text = newText;
+          state.selectedNode.querySelector('span').textContent = newText;
+        }
+        closeNodeEditor();
+      }
+    }
+
+    // 删除选中的节点
+    function deleteSelectedNode() {
+      if (state.selectedNode && state.selectedNode.id !== 'root') { // 不能删除根节点
+        const node = state.selectedNode;
+        const nodeData = node.data;
+        const parentData = nodeData.parent;
+        
+        // 从父节点的children数组中移除
+        if (parentData && parentData.children) {
+          parentData.children = parentData.children.filter(child => child.id !== nodeData.id);
+          
+          // 如果父节点没有子节点了，移除展开图标
+          const parentNode = state.nodes.get(parentData.id);
+          if (parentNode && parentData.children.length === 0) {
+            const icon = parentNode.querySelector('.expand-icon');
+            if (icon) icon.remove();
+          }
+        }
+        
+        // 递归删除所有子节点和连接线
+        function removeNodeAndChildren(nodeData) {
+          if (nodeData.children && nodeData.children.length > 0) {
+            nodeData.children.forEach(child => removeNodeAndChildren(child));
+          }
+          
+          // 移除节点元素
+          const nodeEl = state.nodes.get(nodeData.id);
+          if (nodeEl) nodeEl.remove();
+          state.nodes.delete(nodeData.id);
+          
+          // 移除连接线
+          const connection = state.connections.get(nodeData.id);
+          if (connection) connection.remove();
+          state.connections.delete(nodeData.id);
+        }
+        
+        removeNodeAndChildren(nodeData);
+        closeNodeEditor();
+      }
+    }
+
+    // 关闭节点编辑器
+    function closeNodeEditor() {
+      nodeEditor.classList.add('hidden');
+      state.selectedNode = null;
+      nodeTextInput.value = '';
+    }
+
+    // 添加新节点
+    function addNewNode() {
+      if (!state.selectedNode) {
+        // 如果没有选中节点，默认添加到根节点
+        state.selectedNode = state.nodes.get('root');
+      }
+      
+      const parentNode = state.selectedNode;
+      const parentData = parentNode.data;
+      
+      // 创建新节点数据
+      const newNodeId = `n${Date.now()}`;
+      const angle = Math.random() * Math.PI * 2; // 随机角度
+      const distance = 150; // 距离父节点的距离
+      
+      // 计算新节点位置
+      const parentX = parseFloat(parentNode.style.left);
+      const parentY = parseFloat(parentNode.style.top);
+      const newX = parentX + Math.cos(angle) * distance;
+      const newY = parentY + Math.sin(angle) * distance;
+      
+      const newNodeData = {
+        id: newNodeId,
+        text: '新节点',
+        color: parentData.color,
+        x: newX,
+        y: newY,
+        children: []
+      };
+      
+      // 添加到父节点的children
+      if (!parentData.children) {
+        parentData.children = [];
+        
+        // 添加展开图标
+        const icon = document.createElement('i');
+        icon.className = 'fa fa-chevron-down text-xs ml-2 expand-icon';
+        parentNode.querySelector('div').appendChild(icon);
+      }
+      
+      parentData.children.push(newNodeData);
+      
+      // 渲染新节点
+      renderNode(newNodeData, parentData);
+      
+      // 更新连接线
+      renderConnections();
+      
+      // 确保父节点是展开的
+      if (!parentNode.isExpanded) {
+        toggleNode(parentNode);
+      }
+      
+      // 自动打开编辑框
+      setTimeout(() => {
+        const newNodeEl = state.nodes.get(newNodeId);
+        if (newNodeEl) {
+          openNodeEditor(newNodeEl);
+        }
+      }, 100);
+    }
+
+    // 初始化
+    document.addEventListener('DOMContentLoaded', initMindMap);
+  </script>
+</body>
+</html>

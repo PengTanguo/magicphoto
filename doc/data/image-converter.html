@@ -1,0 +1,999 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>图片转换工具 - 免费在线图片格式格式转换</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css" rel="stylesheet">
+    
+    <!-- 配置Tailwind -->
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#4F46E5',
+                        secondary: '#10B981',
+                        accent: '#F59E0B',
+                        danger: '#EF4444',
+                        dark: '#1E293B',
+                        light: '#F8FAFC'
+                    },
+                    fontFamily: {
+                        inter: ['Inter', 'system-ui', 'sans-serif'],
+                    },
+                }
+            }
+        }
+    </script>
+    
+    <style type="text/tailwindcss">
+        @layer utilities {
+            .content-auto {
+                content-visibility: auto;
+            }
+            .shadow-soft {
+                box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+            }
+            .transition-transform {
+                transition: transform 0.3s ease;
+            }
+            .hover-lift {
+                @apply hover:-translate-y-1 transition-all duration-300;
+            }
+            .gradient-bg {
+                background: linear-gradient(135deg, #4F46E5 0%, #7C3AED 100%);
+            }
+        }
+    </style>
+</head>
+<body class="font-inter bg-gray-50 text-dark min-h-screen flex flex-col">
+    <!-- 导航栏 -->
+    <header class="bg-white shadow-sm sticky top-0 z-50">
+        <div class="container mx-auto px-4 py-4 flex flex-col md:flex-row justify-between items-center">
+            <div class="flex items-center mb-4 md:mb-0">
+                <i class="fa-solid fa-image text-primary text-2xl mr-3"></i>
+                <h1 class="text-xl md:text-2xl font-bold text-gray-800">图片转换工具</h1>
+            </div>
+            <div class="flex items-center space-x-4">
+                <button id="theme-toggle" class="p-2 rounded-full hover:bg-gray-100 transition-colors">
+                    <i class="fa-solid fa-moon text-gray-600"></i>
+                </button>
+                <button id="help-btn" class="p-2 rounded-full hover:bg-gray-100 transition-colors">
+                    <i class="fa-solid fa-question text-gray-600"></i>
+                </button>
+                <button id="history-btn" class="hidden md:flex items-center px-3 py-2 text-gray-700 hover:text-primary transition-colors">
+                    <i class="fa-solid fa-history mr-1"></i>
+                    <span>历史记录</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- 主内容区 -->
+    <main class="flex-grow container mx-auto px-4 py-8">
+        <!-- 介绍部分 -->
+        <section class="mb-10 text-center max-w-3xl mx-auto">
+            <h2 class="text-[clamp(1.5rem,3vw,2rem)] font-bold text-gray-900 mb-3">简单高效的图片格式转换格式转换</h2>
+            <p class="text-gray-600">支持多种图片格式之间的快速转换，支持JPG、PNG、WebP、GIF、SVG等多种格式，保持质量无损转换，完全免费使用。</p>
+        </section>
+
+        <!-- 上传区域 -->
+        <section class="mb-12">
+            <div id="drop-area" class="border-2 border-dashed border-gray-300 rounded-xl p-8 text-center hover:border-primary transition-colors duration-300 cursor-pointer bg-white shadow-soft">
+                <input type="file" id="file-input" class="hidden" accept="image/*" multiple>
+                
+                <div class="flex flex-col items-center">
+                    <div class="w-16 h-16 rounded-full gradient-bg flex items-center justify-center mb-4">
+                        <i class="fa-solid fa-cloud-upload text-white text-2xl"></i>
+                    </div>
+                    
+                    <h3 class="text-lg font-medium text-gray-900 mb-2">拖放图片到此处</h3>
+                    <p class="text-gray-500 mb-6">或点击选择图片文件</p>
+                    
+                    <button id="browse-btn" class="px-6 py-3 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors duration-300 shadow-sm hover-lift flex items-center">
+                        <i class="fa-solid fa-folder-open mr-2"></i>
+                        选择图片
+                    </button>
+                    
+                    <p class="text-gray-400 text-sm mt-4">支持 JPG, PNG, WebP, GIF, BMP, TIFF, SVG 等格式</p>
+                </div>
+                
+                <!-- 上传进度进度条（默认时隐藏） -->
+                <div id="upload-progress" class="mt-6 hidden">
+                    <div class="flex items-center justify-between mb-1">
+                        <span class="text-sm text-gray-600">处理中...</span>
+                        <span id="progress-percentage" class="text-sm font-medium text-primary">0%</span>
+                    </div>
+                    <div class="w-full bg-gray-200 rounded-full h-2">
+                        <div id="progress-bar" class="bg-primary h-2 rounded-full transition-all duration-300" style="width: 0%"></div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 图片预览和转换设置 -->
+        <section id="conversion-section" class="mb-12 hidden">
+            <div class="bg-white rounded-xl shadow-soft p-6">
+                <h3 class="text-xl font-semibold mb-6 flex items-center">
+                    <i class="fa-solid fa-sliders text-primary mr-2"></i>
+                    转换设置
+                </h3>
+                
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                    <!-- 图片预览 -->
+                    <div class="lg:col-span-1">
+                        <h4 class="font-medium text-gray-900 mb-3">图片预览</h4>
+                        <div class="border border-gray-200 rounded-lg overflow-hidden bg-gray-50 flex items-center justify-center min-h-[200px]">
+                            <div id="preview-container" class="w-full h-full flex items-center justify-center p-4">
+                                <img id="image-preview" src="" alt="图片预览" class="max-w-full max-h-[300px] object-contain hidden">
+                                <div id="no-preview" class="text-center text-gray-400">
+                                    <i class="fa-solid fa-image text-4xl mb-2"></i>
+                                    <p>图片将在这里预览</p>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div id="image-info" class="mt-4 text-sm text-gray-600 hidden">
+                            <div class="grid grid-cols-2 gap-2">
+                                <div>
+                                    <span class="text-gray-500">文件名:</span>
+                                    <p id="image-name" class="font-medium truncate"></p>
+                                </div>
+                                <div>
+                                    <span class="text-gray-500">格式:</span>
+                                    <p id="image-format"></p>
+                                </div>
+                                <div>
+                                    <span class="text-gray-500">尺寸:</span>
+                                    <p id="image-dimensions"></p>
+                                </div>
+                                <div>
+                                    <span class="text-gray-500">大小:</span>
+                                    <p id="image-size"></p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- 转换设置 -->
+                    <div class="lg:col-span-2">
+                        <h4 class="font-medium text-gray-900 mb-3">输出设置</h4>
+                        
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <!-- 输出格式 -->
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">输出格式</label>
+                                <div class="grid grid-cols-3 gap-2">
+                                    <button class="format-btn py-2 px-3 border border-gray-300 rounded-lg hover:border-primary hover:bg-primary/5 transition-colors text-sm flex items-center justify-center" data-format="jpg">
+                                        <i class="fa-solid fa-file-image mr-1"></i> JPG
+                                    </button>
+                                    <button class="format-btn py-2 px-3 border border-gray-300 rounded-lg hover:border-primary hover:bg-primary/5 transition-colors text-sm flex items-center justify-center" data-format="png">
+                                        <i class="fa-solid fa-file-image mr-1"></i> PNG
+                                    </button>
+                                    <button class="format-btn py-2 px-3 border border-gray-300 rounded-lg hover:border-primary hover:bg-primary/5 transition-colors text-sm flex items-center justify-center" data-format="webp">
+                                        <i class="fa-solid fa-file-image mr-1"></i> WebP
+                                    </button>
+                                    <button class="format-btn py-2 px-3 border border-gray-300 rounded-lg hover:border-primary hover:bg-primary/5 transition-colors text-sm flex items-center justify-center" data-format="gif">
+                                        <i class="fa-solid fa-file-image mr-1"></i> GIF
+                                    </button>
+                                    <button class="format-btn py-2 px-3 border border-gray-300 rounded-lg hover:border-primary hover:bg-primary/5 transition-colors text-sm flex items-center justify-center" data-format="svg">
+                                        <i class="fa-solid fa-file-image mr-1"></i> SVG
+                                    </button>
+                                    <button class="format-btn py-2 px-3 border border-gray-300 rounded-lg hover:border-primary hover:bg-primary/5 transition-colors text-sm flex items-center justify-center" data-format="bmp">
+                                        <i class="fa-solid fa-file-image mr-1"></i> BMP
+                                    </button>
+                                </div>
+                            </div>
+                            
+                            <!-- 质量设置 -->
+                            <div>
+                                <label for="quality-slider" class="block text-sm font-medium text-gray-700 mb-2">
+                                    质量 (<span id="quality-value">80</span>%)
+                                </label>
+                                <input type="range" id="quality-slider" min="1" max="100" value="80" 
+                                    class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-primary">
+                                <div class="flex justify-between text-xs text-gray-500 mt-1">
+                                    <span>低</span>
+                                    <span>高</span>
+                                </div>
+                            </div>
+                            
+                            <!-- 尺寸设置 -->
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">尺寸调整</label>
+                                <div class="grid grid-cols-2 gap-3">
+                                    <div>
+                                        <label class="text-xs text-gray-500">宽度 (像素)</label>
+                                        <input type="number" id="width-input" class="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary/50 focus:border-primary transition-colors text-sm" placeholder="保持原始">
+                                    </div>
+                                    <div>
+                                        <label class="text-xs text-gray-500">高度 (像素)</label>
+                                        <input type="number" id="height-input" class="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary/50 focus:border-primary transition-colors text-sm" placeholder="保持原始">
+                                    </div>
+                                </div>
+                                <div class="flex items-center mt-2">
+                                    <input type="checkbox" id="preserve-ratio" class="h-4 w-4 text-primary focus:ring-primary/50 border-gray-300 rounded" checked>
+                                    <label for="preserve-ratio" class="ml-2 block text-xs text-gray-700">保持宽高比</label>
+                                </div>
+                            </div>
+                            
+                            <!-- 其他选项 -->
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">其他选项</label>
+                                <div class="space-y-2">
+                                    <div class="flex items-center">
+                                        <input type="checkbox" id="remove-metadata" class="h-4 w-4 text-primary focus:ring-primary/50 border-gray-300 rounded">
+                                        <label for="remove-metadata" class="ml-2 block text-sm text-gray-700">移除元数据</label>
+                                    </div>
+                                    <div class="flex items-center">
+                                        <input type="checkbox" id="compress-image" class="h-4 w-4 text-primary focus:ring-primary/50 border-gray-300 rounded" checked>
+                                        <label for="compress-image" class="ml-2 block text-sm text-gray-700">压缩图片</label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- 转换按钮 -->
+                        <div class="mt-8 flex flex-col sm:flex-row gap-3">
+                            <button id="convert-btn" class="flex-1 px-6 py-3 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors duration-300 shadow-sm hover-lift flex items-center justify-center">
+                                <i class="fa-solid fa-exchange mr-2"></i>
+                                转换图片
+                            </button>
+                            <button id="reset-btn" class="px-6 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors duration-300 hover-lift flex items-center justify-center">
+                                <i class="fa-solid fa-refresh mr-2"></i>
+                                重置设置
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 转换结果 -->
+        <section id="result-section" class="mb-12 hidden">
+            <div class="bg-white rounded-xl shadow-soft p-6">
+                <h3 class="text-xl font-semibold mb-6 flex items-center">
+                    <i class="fa-solid fa-check-circle text-secondary mr-2"></i>
+                    转换结果
+                </h3>
+                
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                    <!-- 结果预览 -->
+                    <div class="lg:col-span-1">
+                        <h4 class="font-medium text-gray-900 mb-3">转换后预览</h4>
+                        <div class="border border-gray-200 rounded-lg overflow-hidden bg-gray-50 flex items-center justify-center min-h-[200px]">
+                            <img id="result-preview" src="" alt="转换结果预览" class="max-w-full max-h-[300px] object-contain">
+                        </div>
+                        
+                        <div class="mt-4 text-sm text-gray-600">
+                            <div class="grid grid-cols-2 gap-2">
+                                <div>
+                                    <span class="text-gray-500">新文件名:</span>
+                                    <p id="result-name" class="font-medium truncate"></p>
+                                </div>
+                                <div>
+                                    <span class="text-gray-500">新格式:</span>
+                                    <p id="result-format"></p>
+                                </div>
+                                <div>
+                                    <span class="text-gray-500">新尺寸:</span>
+                                    <p id="result-dimensions"></p>
+                                </div>
+                                <div>
+                                    <span class="text-gray-500">文件大小:</span>
+                                    <p id="result-size"></p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- 下载选项 -->
+                    <div class="lg:col-span-2">
+                        <h4 class="font-medium text-gray-900 mb-3">下载选项</h4>
+                        
+                        <div class="bg-gray-50 p-4 rounded-lg mb-6">
+                            <div class="flex flex-col md:flex-row md:items-center justify-between">
+                                <div>
+                                    <p class="font-medium" id="download-filename"></p>
+                                    <p class="text-sm text-gray-500">点击下载按钮保存转换后的图片</p>
+                                </div>
+                                <button id="download-btn" class="mt-3 md:mt-0 px-6 py-3 bg-secondary text-white rounded-lg hover:bg-secondary/90 transition-colors duration-300 shadow-sm hover-lift flex items-center">
+                                    <i class="fa-solid fa-download mr-2"></i>
+                                    下载图片
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <!-- 批量操作 -->
+                        <div id="batch-actions" class="hidden">
+                            <h4 class="font-medium text-gray-900 mb-3">批量操作</h4>
+                            <div class="flex flex-wrap gap-3">
+                                <button class="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors duration-300 shadow-sm hover-lift flex items-center">
+                                    <i class="fa-solid fa-download mr-2"></i>
+                                    下载全部
+                                </button>
+                                <button class="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors duration-300 hover-lift flex items-center">
+                                    <i class="fa-solid fa-file-zipper mr-2"></i>
+                                    打包下载
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <!-- 后续操作 -->
+                        <div>
+                            <h4 class="font-medium text-gray-900 mb-3">后续操作</h4>
+                            <div class="flex flex-wrap gap-3">
+                                <button id="convert-another-btn" class="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors duration-300 hover-lift flex items-center">
+                                    <i class="fa-solid fa-plus mr-2"></i>
+                                    转换另一张图片
+                                </button>
+                                <button id="edit-image-btn" class="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors duration-300 hover-lift flex items-center">
+                                    <i class="fa-solid fa-pen mr-2"></i>
+                                    编辑图片
+                                </button>
+                                <button id="share-image-btn" class="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors duration-300 hover-lift flex items-center">
+                                    <i class="fa-solid fa-share-alt mr-2"></i>
+                                    分享图片
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 支持的格式 -->
+        <section class="mb-12">
+            <div class="bg-white rounded-xl shadow-soft p-6">
+                <h3 class="text-xl font-semibold mb-6 flex items-center">
+                    <i class="fa-solid fa-file-image text-primary mr-2"></i>
+                    支持的图片格式
+                </h3>
+                
+                <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+                    <div class="border border-gray-200 rounded-lg p-4 text-center hover:border-primary transition-colors duration-300">
+                        <div class="text-3xl mb-2">
+                            <i class="fa-solid fa-file-image text-primary"></i>
+                        </div>
+                        <h4 class="font-medium">JPG / JPEG</h4>
+                        <p class="text-xs text-gray-500 mt-1">联合图像专家组</p>
+                    </div>
+                    
+                    <div class="border border-gray-200 rounded-lg p-4 text-center hover:border-primary transition-colors duration-300">
+                        <div class="text-3xl mb-2">
+                            <i class="fa-solid fa-file-image text-primary"></i>
+                        </div>
+                        <h4 class="font-medium">PNG</h4>
+                        <p class="text-xs text-gray-500 mt-1">便携式网络图形</p>
+                    </div>
+                    
+                    <div class="border border-gray-200 rounded-lg p-4 text-center hover:border-primary transition-colors duration-300">
+                        <div class="text-3xl mb-2">
+                            <i class="fa-solid fa-file-image text-primary"></i>
+                        </div>
+                        <h4 class="font-medium">WebP</h4>
+                        <p class="text-xs text-gray-500 mt-1">现代图像格式</p>
+                    </div>
+                    
+                    <div class="border border-gray-200 rounded-lg p-4 text-center hover:border-primary transition-colors duration-300">
+                        <div class="text-3xl mb-2">
+                            <i class="fa-solid fa-file-image text-primary"></i>
+                        </div>
+                        <h4 class="font-medium">GIF</h4>
+                        <p class="text-xs text-gray-500 mt-1">图形交换格式</p>
+                    </div>
+                    
+                    <div class="border border-gray-200 rounded-lg p-4 text-center hover:border-primary transition-colors duration-300">
+                        <div class="text-3xl mb-2">
+                            <i class="fa-solid fa-file-image text-primary"></i>
+                        </div>
+                        <h4 class="font-medium">SVG</h4>
+                        <p class="text-xs text-gray-500 mt-1">可缩放矢量图形</p>
+                    </div>
+                    
+                    <div class="border border-gray-200 rounded-lg p-4 text-center hover:border-primary transition-colors duration-300">
+                        <div class="text-3xl mb-2">
+                            <i class="fa-solid fa-file-image text-primary"></i>
+                        </div>
+                        <h4 class="font-medium">BMP</h4>
+                        <p class="text-xs text-gray-500 mt-1">位图图像</p>
+                    </div>
+                    
+                    <div class="border border-gray-200 rounded-lg p-4 text-center hover:border-primary transition-colors duration-300">
+                        <div class="text-3xl mb-2">
+                            <i class="fa-solid fa-file-image text-primary"></i>
+                        </div>
+                        <h4 class="font-medium">TIFF</h4>
+                        <p class="text-xs text-gray-500 mt-1">标签图像文件格式</p>
+                    </div>
+                    
+                    <div class="border border-gray-200 rounded-lg p-4 text-center hover:border-primary transition-colors duration-300">
+                        <div class="text-3xl mb-2">
+                            <i class="fa-solid fa-file-image text-primary"></i>
+                        </div>
+                        <h4 class="font-medium">更多格式</h4>
+                        <p class="text-xs text-gray-500 mt-1">持续添加中</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- 帮助模态框 -->
+    <div id="help-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+        <div class="bg-white rounded-xl shadow-xl max-w-lg w-full mx-4 max-h-[90vh] overflow-y-auto">
+            <div class="p-6">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-lg font-bold text-gray-900">使用帮助</h3>
+                    <button id="close-help" class="text-gray-500 hover:text-gray-700">
+                        <i class="fa-solid fa-times"></i>
+                    </button>
+                </div>
+                <div class="space-y-4">
+                    <div>
+                        <h4 class="font-medium text-gray-900">如何转换图片格式？</h4>
+                        <p class="text-sm text-gray-600 mt-1">1. 点击"选择图片"按钮或直接拖放图片到上传区域<br>
+                        2. 在转换设置中选择所需的输出格式和其他选项<br>
+                        3. 点击"转换图片"按钮<br>
+                        4. 转换完成后，点击"下载图片"保存结果</p>
+                    </div>
+                    
+                    <div>
+                        <h4 class="font-medium text-gray-900">支持哪些图片格式？</h4>
+                        <p class="text-sm text-gray-600 mt-1">目前支持JPG、PNG、WebP、GIF、SVG、BMP和TIFF等常见图片格式的相互转换。我们会持续添加更多格式支持。</p>
+                    </div>
+                    
+                    <div>
+                        <h4 class="font-medium text-gray-900">图片质量和大小</h4>
+                        <p class="text-sm text-gray-600 mt-1">您可以通过质量滑块调整输出图片的质量，范围从1%到100%。质量越高，图片文件越大；质量越低，压缩率越高。</p>
+                    </div>
+                    
+                    <div>
+                        <h4 class="font-medium text-gray-900">隐私说明</h4>
+                        <p class="text-sm text-gray-600 mt-1">所有图片处理都在您的浏览器中进行，不会上传到服务器。您的图片和转换结果仅保存在您的设备上，保护您的隐私安全。</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 通知组件 -->
+    <div id="notification" class="fixed top-4 right-4 p-4 rounded-lg shadow-lg transform transition-all duration-300 translate-x-full opacity-0 z-50 flex items-center max-w-xs">
+        <i id="notification-icon" class="mr-2"></i>
+        <span id="notification-message"></span>
+        <button id="close-notification" class="ml-4 text-gray-400 hover:text-gray-600">
+            <i class="fa-solid fa-times"></i>
+        </button>
+    </div>
+
+    <!-- 页脚 -->
+    <footer class="bg-white border-t border-gray-200 mt-8">
+        <div class="container mx-auto px-4 py-8">
+            <div class="flex flex-col md:flex-row justify-between items-center">
+                <div class="mb-6 md:mb-0">
+                    <div class="flex items-center">
+                        <i class="fa-solid fa-image text-primary text-xl mr-2"></i>
+                        <span class="text-lg font-semibold">图片转换工具</span>
+                    </div>
+                    <p class="text-gray-500 text-sm mt-2">简单、快速、高质量的图片格式转换工具，完全免费使用。</p>
+                </div>
+                
+                <div class="grid grid-cols-2 sm:grid-cols-3 gap-8">
+                    <div>
+                        <h4 class="text-sm font-semibold text-gray-900 mb-3">功能</h4>
+                        <ul class="space-y-2 text-sm">
+                            <li><a href="#" class="text-gray-500 hover:text-primary transition-colors">图片转换</a></li>
+                            <li><a href="#" class="text-gray-500 hover:text-primary transition-colors">图片压缩</a></li>
+                            <li><a href="#" class="text-gray-500 hover:text-primary transition-colors">图片裁剪</a></li>
+                            <li><a href="#" class="text-gray-500 hover:text-primary transition-colors">批量处理</a></li>
+                        </ul>
+                    </div>
+                    
+                    <div>
+                        <h4 class="text-sm font-semibold text-gray-900 mb-3">关于</h4>
+                        <ul class="space-y-2 text-sm">
+                            <li><a href="#" class="text-gray-500 hover:text-primary transition-colors">关于我们</a></li>
+                            <li><a href="#" class="text-gray-500 hover:text-primary transition-colors">隐私政策</a></li>
+                            <li><a href="#" class="text-gray-500 hover:text-primary transition-colors">使用条款</a></li>
+                            <li><a href="#" class="text-gray-500 hover:text-primary transition-colors">联系我们</a></li>
+                        </ul>
+                    </div>
+                    
+                    <div>
+                        <h4 class="text-sm font-semibold text-gray-900 mb-3">关注我们</h4>
+                        <div class="flex space-x-3">
+                            <a href="#" class="text-gray-400 hover:text-primary transition-colors">
+                                <i class="fa-brands fa-github text-xl"></i>
+                            </a>
+                            <a href="#" class="text-gray-400 hover:text-primary transition-colors">
+                                <i class="fa-brands fa-twitter text-xl"></i>
+                            </a>
+                            <a href="#" class="text-gray-400 hover:text-primary transition-colors">
+                                <i class="fa-brands fa-facebook text-xl"></i>
+                            </a>
+                            <a href="#" class="text-gray-400 hover:text-primary transition-colors">
+                                <i class="fa-brands fa-instagram text-xl"></i>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="mt-8 pt-6 border-t border-gray-200 text-center text-sm text-gray-500">
+                <p>© 2023 图片转换工具 - 保留所有权利</p>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        // DOM 元素
+        const dropArea = document.getElementById('drop-area');
+        const fileInput = document.getElementById('file-input');
+        const browseBtn = document.getElementById('browse-btn');
+        const uploadProgress = document.getElementById('upload-progress');
+        const progressBar = document.getElementById('progress-bar');
+        const progressPercentage = document.getElementById('progress-percentage');
+        const conversionSection = document.getElementById('conversion-section');
+        const resultSection = document.getElementById('result-section');
+        const imagePreview = document.getElementById('image-preview');
+        const noPreview = document.getElementById('no-preview');
+        const imageInfo = document.getElementById('image-info');
+        const imageName = document.getElementById('image-name');
+        const imageFormat = document.getElementById('image-format');
+        const imageDimensions = document.getElementById('image-dimensions');
+        const imageSize = document.getElementById('image-size');
+        const qualitySlider = document.getElementById('quality-slider');
+        const qualityValue = document.getElementById('quality-value');
+        const widthInput = document.getElementById('width-input');
+        const heightInput = document.getElementById('height-input');
+        const preserveRatio = document.getElementById('preserve-ratio');
+        const removeMetadata = document.getElementById('remove-metadata');
+        const compressImage = document.getElementById('compress-image');
+        const convertBtn = document.getElementById('convert-btn');
+        const resetBtn = document.getElementById('reset-btn');
+        const resultPreview = document.getElementById('result-preview');
+        const resultName = document.getElementById('result-name');
+        const resultFormat = document.getElementById('result-format');
+        const resultDimensions = document.getElementById('result-dimensions');
+        const resultSize = document.getElementById('result-size');
+        const downloadFilename = document.getElementById('download-filename');
+        const downloadBtn = document.getElementById('download-btn');
+        const convertAnotherBtn = document.getElementById('convert-another-btn');
+        const editImageBtn = document.getElementById('edit-image-btn');
+        const shareImageBtn = document.getElementById('share-image-btn');
+        const themeToggle = document.getElementById('theme-toggle');
+        const helpBtn = document.getElementById('help-btn');
+        const helpModal = document.getElementById('help-modal');
+        const closeHelp = document.getElementById('close-help');
+        const notification = document.getElementById('notification');
+        const notificationMessage = document.getElementById('notification-message');
+        const notificationIcon = document.getElementById('notification-icon');
+        const closeNotification = document.getElementById('close-notification');
+        const formatBtns = document.querySelectorAll('.format-btn');
+        
+        // 全局变量
+        let selectedFile = null;
+        let originalWidth = 0;
+        let originalHeight = 0;
+        let selectedFormat = 'jpg';
+        
+        // 文件上传相关
+        browseBtn.addEventListener('click', () => {
+            fileInput.click();
+        });
+        
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files.length > 0) {
+                handleFile(e.target.files[0]);
+            }
+        });
+        
+        // 拖放功能
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+            dropArea.addEventListener(eventName, preventDefaults, false);
+        });
+        
+        function preventDefaults(e) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+        
+        ['dragenter', 'dragover'].forEach(eventName => {
+            dropArea.addEventListener(eventName, highlight, false);
+        });
+        
+        ['dragleave', 'drop'].forEach(eventName => {
+            dropArea.addEventListener(eventName, unhighlight, false);
+        });
+        
+        function highlight() {
+            dropArea.classList.add('border-primary', 'bg-primary/5');
+        }
+        
+        function unhighlight() {
+            dropArea.classList.remove('border-primary', 'bg-primary/5');
+        }
+        
+        dropArea.addEventListener('drop', handleDrop, false);
+        
+        function handleDrop(e) {
+            const dt = e.dataTransfer;
+            const file = dt.files[0];
+            if (file) {
+                handleFile(file);
+            }
+        }
+        
+        // 处理文件上传
+        function handleFile(file) {
+            // 检查文件类型
+            if (!file.type.startsWith('image/')) {
+                showNotification('请上传图片文件', 'error');
+                return;
+            }
+            
+            selectedFile = file;
+            
+            // 显示上传进度
+            uploadProgress.classList.remove('hidden');
+            simulateProgress();
+            
+            // 读取文件并显示预览
+            const reader = new FileReader();
+            
+            reader.onload = function(e) {
+                // 创建图像对象获取尺寸信息
+                const img = new Image();
+                img.onload = function() {
+                    originalWidth = img.width;
+                    originalHeight = img.height;
+                    
+                    // 更新预览
+                    imagePreview.src = e.target.result;
+                    imagePreview.classList.remove('hidden');
+                    noPreview.classList.add('hidden');
+                    
+                    // 更新图片信息
+                    const fileName = file.name;
+                    const fileExtension = fileName.split('.').pop().toUpperCase();
+                    const fileSize = formatFileSize(file.size);
+                    
+                    imageName.textContent = fileName;
+                    imageFormat.textContent = fileExtension;
+                    imageDimensions.textContent = `${originalWidth} × ${originalHeight} px`;
+                    imageSize.textContent = fileSize;
+                    
+                    imageInfo.classList.remove('hidden');
+                    
+                    // 自动选择与原格式不同的输出格式
+                    const defaultFormat = fileExtension.toLowerCase() === 'jpg' ? 'png' : 'jpg';
+                    selectFormat(defaultFormat);
+                    
+                    // 重置尺寸输入
+                    widthInput.value = '';
+                    heightInput.value = '';
+                    
+                    // 显示转换设置区域
+                    conversionSection.classList.remove('hidden');
+                    resultSection.classList.add('hidden');
+                    
+                    // 滚动到转换设置区域
+                    conversionSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    
+                    showNotification(`已加载图片: ${fileName}`, 'success');
+                };
+                
+                img.src = e.target.result;
+            };
+            
+            reader.readAsDataURL(file);
+        }
+        
+        // 模拟上传进度
+        function simulateProgress() {
+            let progress = 0;
+            const interval = setInterval(() => {
+                progress += Math.random() * 15;
+                if (progress > 100) {
+                    progress = 100;
+                    clearInterval(interval);
+                    setTimeout(() => {
+                        uploadProgress.classList.add('hidden');
+                    }, 500);
+                }
+                
+                progressBar.style.width = `${progress}%`;
+                progressPercentage.textContent = `${Math.round(progress)}%`;
+            }, 200);
+        }
+        
+        // 格式化文件大小
+        function formatFileSize(bytes) {
+            if (bytes === 0) return '0 Bytes';
+            
+            const k = 1024;
+            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        }
+        
+        // 格式选择
+        formatBtns.forEach(btn => {
+            btn.addEventListener('click', () => {
+                const format = btn.dataset.format;
+                selectFormat(format);
+            });
+        });
+        
+        function selectFormat(format) {
+            // 移除所有选中状态
+            formatBtns.forEach(btn => {
+                btn.classList.remove('border-primary', 'bg-primary/10', 'text-primary');
+                btn.classList.add('border-gray-300');
+            });
+            
+            // 添加选中状态
+            const selectedBtn = document.querySelector(`.format-btn[data-format="${format}"]`);
+            if (selectedBtn) {
+                selectedBtn.classList.remove('border-gray-300');
+                selectedBtn.classList.add('border-primary', 'bg-primary/10', 'text-primary');
+            }
+            
+            selectedFormat = format;
+        }
+        
+        // 质量滑块
+        qualitySlider.addEventListener('input', () => {
+            qualityValue.textContent = qualitySlider.value;
+        });
+        
+        // 尺寸调整逻辑
+        widthInput.addEventListener('input', () => {
+            if (preserveRatio.checked && widthInput.value && originalWidth) {
+                const ratio = originalHeight / originalWidth;
+                const newWidth = parseInt(widthInput.value);
+                const newHeight = Math.round(newWidth * ratio);
+                heightInput.value = newHeight;
+            }
+        });
+        
+        heightInput.addEventListener('input', () => {
+            if (preserveRatio.checked && heightInput.value && originalHeight) {
+                const ratio = originalWidth / originalHeight;
+                const newHeight = parseInt(heightInput.value);
+                const newWidth = Math.round(newHeight * ratio);
+                widthInput.value = newWidth;
+            }
+        });
+        
+        // 转换图片
+        convertBtn.addEventListener('click', () => {
+            if (!selectedFile) {
+                showNotification('请先选择图片', 'error');
+                return;
+            }
+            
+            // 显示进度条
+            uploadProgress.classList.remove('hidden');
+            progressBar.style.width = '0%';
+            progressPercentage.textContent = '0%';
+            
+            // 模拟转换进度
+            let progress = 0;
+            const interval = setInterval(() => {
+                progress += Math.random() * 10;
+                if (progress > 100) {
+                    progress = 100;
+                    clearInterval(interval);
+                    
+                    setTimeout(() => {
+                        uploadProgress.classList.add('hidden');
+                        showConversionResult();
+                    }, 500);
+                }
+                
+                progressBar.style.width = `${progress}%`;
+                progressPercentage.textContent = `${Math.round(progress)}%`;
+            }, 150);
+        });
+        
+        // 显示转换结果
+        function showConversionResult() {
+            // 生成结果数据（实际应用中这里会有真实的转换逻辑）
+            const originalName = selectedFile.name.split('.').slice(0, -1).join('.');
+            const newFileName = `${originalName}.${selectedFormat}`;
+            
+            // 计算新尺寸
+            let newWidth = originalWidth;
+            let newHeight = originalHeight;
+            
+            if (widthInput.value) {
+                newWidth = parseInt(widthInput.value);
+                newHeight = preserveRatio.checked ? 
+                    Math.round(newWidth * (originalHeight / originalWidth)) : 
+                    parseInt(heightInput.value || originalHeight);
+            } else if (heightInput.value) {
+                newHeight = parseInt(heightInput.value);
+                newWidth = preserveRatio.checked ? 
+                    Math.round(newHeight * (originalWidth / originalHeight)) : 
+                    parseInt(widthInput.value || originalWidth);
+            }
+            
+            // 计算新大小（模拟）
+            const qualityFactor = parseInt(qualitySlider.value) / 100;
+            const originalSize = selectedFile.size;
+            const newSize = Math.round(originalSize * qualityFactor * (compressImage.checked ? 0.7 : 1));
+            
+            // 更新结果预览
+            resultPreview.src = imagePreview.src; // 在实际应用中，这里会是转换后的图片URL
+            resultName.textContent = newFileName;
+            resultFormat.textContent = selectedFormat.toUpperCase();
+            resultDimensions.textContent = `${newWidth} × ${newHeight} px`;
+            resultSize.textContent = formatFileSize(newSize);
+            downloadFilename.textContent = newFileName;
+            
+            // 显示结果区域
+            resultSection.classList.remove('hidden');
+            
+            // 滚动到结果区域
+            resultSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            
+            showNotification('图片转换成功', 'success');
+        }
+        
+        // 下载图片
+        downloadBtn.addEventListener('click', () => {
+            // 在实际应用中，这里会是转换后的图片Blob或URL
+            // 这里使用原始图片作为示例
+            const link = document.createElement('a');
+            link.href = resultPreview.src;
+            link.download = downloadFilename.textContent;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            
+            showNotification('图片已下载', 'success');
+        });
+        
+        // 转换另一张图片
+        convertAnotherBtn.addEventListener('click', () => {
+            // 重置文件输入
+            fileInput.value = '';
+            
+            // 隐藏结果区域
+            resultSection.classList.add('hidden');
+            
+            // 滚动到上传区域
+            dropArea.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            
+            showNotification('请选择新的图片进行转换', 'info');
+        });
+        
+        // 编辑图片
+        editImageBtn.addEventListener('click', () => {
+            showNotification('图片编辑功能即将推出', 'info');
+        });
+        
+        // 分享图片
+        shareImageBtn.addEventListener('click', () => {
+            if (navigator.share) {
+                navigator.share({
+                    title: '转换后的图片',
+                    text: '查看我使用图片转换工具处理的图片',
+                    url: window.location.href
+                }).catch(error => {
+                    console.log('分享失败:', error);
+                    showNotification('分享失败', 'error');
+                });
+            } else {
+                showNotification('您的浏览器不支持分享功能', 'info');
+            }
+        });
+        
+        // 重置设置
+        resetBtn.addEventListener('click', () => {
+            // 重置格式为JPG
+            selectFormat('jpg');
+            
+            // 重置质量
+            qualitySlider.value = 80;
+            qualityValue.textContent = '80';
+            
+            // 重置尺寸
+            widthInput.value = '';
+            heightInput.value = '';
+            
+            // 重置选项
+            preserveRatio.checked = true;
+            removeMetadata.checked = false;
+            compressImage.checked = true;
+            
+            showNotification('设置已重置', 'info');
+        });
+        
+        // 主题切换
+        themeToggle.addEventListener('click', () => {
+            const isDark = document.documentElement.classList.toggle('dark');
+            const icon = themeToggle.querySelector('i');
+            
+            if (isDark) {
+                document.documentElement.classList.add('dark');
+                icon.className = 'fa-solid fa-sun text-yellow-400';
+                document.body.classList.add('bg-gray-900', 'text-white');
+                document.querySelectorAll('.bg-white').forEach(el => {
+                    el.classList.remove('bg-white');
+                    el.classList.add('bg-gray-800');
+                });
+                document.querySelectorAll('.bg-gray-50').forEach(el => {
+                    el.classList.remove('bg-gray-50');
+                    el.classList.add('bg-gray-800');
+                });
+                showNotification('已切换到深色模式', 'info');
+            } else {
+                document.documentElement.classList.remove('dark');
+                icon.className = 'fa-solid fa-moon text-gray-600';
+                document.body.classList.remove('bg-gray-900', 'text-white');
+                document.querySelectorAll('.bg-gray-800').forEach(el => {
+                    el.classList.remove('bg-gray-800');
+                    el.classList.add('bg-white');
+                });
+                showNotification('已切换到浅色模式', 'info');
+            }
+        });
+        
+        // 帮助模态框
+        helpBtn.addEventListener('click', () => {
+            helpModal.classList.remove('hidden');
+        });
+        
+        closeHelp.addEventListener('click', () => {
+            helpModal.classList.add('hidden');
+        });
+        
+        // 点击模态框外部关闭
+        helpModal.addEventListener('click', (e) => {
+            if (e.target === helpModal) {
+                helpModal.classList.add('hidden');
+            }
+        });
+        
+        // 通知关闭按钮
+        closeNotification.addEventListener('click', () => {
+            notification.classList.add('translate-x-full', 'opacity-0');
+        });
+        
+        // 显示通知
+        function showNotification(message, type = 'info') {
+            notificationMessage.textContent = message;
+            
+            // 设置图标和样式
+            notification.className = 'fixed top-4 right-4 p-4 rounded-lg shadow-lg transform transition-all duration-300 translate-x-0 opacity-100 z-50 flex items-center max-w-xs';
+            
+            if (type === 'success') {
+                notification.classList.add('bg-green-50', 'text-green-800', 'border-l-4', 'border-green-400');
+                notificationIcon.className = 'fa-solid fa-check-circle text-green-500 mr-2';
+            } else if (type === 'error') {
+                notification.classList.add('bg-red-50', 'text-red-800', 'border-l-4', 'border-red-400');
+                notificationIcon.className = 'fa-solid fa-exclamation-circle text-red-500 mr-2';
+            } else if (type === 'warning') {
+                notification.classList.add('bg-yellow-50', 'text-yellow-800', 'border-l-4', 'border-yellow-400');
+                notificationIcon.className = 'fa-solid fa-exclamation-triangle text-yellow-500 mr-2';
+            } else {
+                notification.classList.add('bg-blue-50', 'text-blue-800', 'border-l-4', 'border-blue-400');
+                notificationIcon.className = 'fa-solid fa-info-circle text-blue-500 mr-2';
+            }
+            
+            // 5秒后自动隐藏
+            setTimeout(() => {
+                notification.classList.add('translate-x-full', 'opacity-0');
+            }, 5000);
+        }
+        
+        // 初始化 - 默认选择JPG格式
+        selectFormat('jpg');
+    </script>
+</body>
+</html>

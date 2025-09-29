@@ -1,0 +1,559 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JSON在线格式化工具</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css" rel="stylesheet">
+    
+    <!-- 配置Tailwind -->
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#3B82F6',
+                        secondary: '#10B981',
+                        danger: '#EF4444',
+                        dark: '#1E293B',
+                        light: '#F8FAFC'
+                    },
+                    fontFamily: {
+                        mono: ['Consolas', 'Monaco', 'Courier New', 'monospace'],
+                        sans: ['Inter', 'system-ui', 'sans-serif']
+                    },
+                }
+            }
+        }
+    </script>
+    
+    <style type="text/tailwindcss">
+        @layer utilities {
+            .content-auto {
+                content-visibility: auto;
+            }
+            .editor-shadow {
+                box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            }
+            .btn-hover {
+                @apply transition-all duration-200 hover:shadow-md transform hover:-translate-y-0.5;
+            }
+            .json-key {
+                color: #0066CC;
+                font-weight: bold;
+            }
+            .json-string {
+                color: #008000;
+            }
+            .json-number {
+                color: #FF4500;
+            }
+            .json-boolean {
+                color: #800080;
+            }
+            .json-null {
+                color: #808080;
+            }
+        }
+    </style>
+</head>
+<body class="bg-gray-50 font-sans text-dark min-h-screen flex flex-col">
+    <!-- 顶部导航 -->
+    <header class="bg-white shadow-sm">
+        <div class="container mx-auto px-4 py-4 flex flex-col md:flex-row justify-between items-center">
+            <div class="flex items-center mb-4 md:mb-0">
+                <i class="fa-solid fa-code text-primary text-2xl mr-3"></i>
+                <h1 class="text-xl md:text-2xl font-bold text-gray-800">JSON 在线格式化工具</h1>
+            </div>
+            <div class="flex items-center space-x-2">
+                <button id="theme-toggle" class="p-2 rounded-full hover:bg-gray-100 transition-colors">
+                    <i class="fa-solid fa-moon text-gray-600"></i>
+                </button>
+                <button id="help-btn" class="p-2 rounded-full hover:bg-gray-100 transition-colors">
+                    <i class="fa-solid fa-question text-gray-600"></i>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- 主内容区 -->
+    <main class="flex-grow container mx-auto px-4 py-6">
+        <!-- 工具栏 -->
+        <div class="bg-white rounded-lg shadow-sm p-4 mb-6">
+            <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2">
+                <button id="format-btn" class="flex items-center justify-center px-3 py-2 bg-primary text-white rounded-md btn-hover">
+                    <i class="fa-solid fa-indent mr-2"></i>
+                    <span class="hidden sm:inline">格式化</span>
+                </button>
+                <button id="minify-btn" class="flex items-center justify-center px-3 py-2 bg-secondary text-white rounded-md btn-hover">
+                    <i class="fa-solid fa-compress mr-2"></i>
+                    <span class="hidden sm:inline">压缩</span>
+                </button>
+                <button id="validate-btn" class="flex items-center justify-center px-3 py-2 bg-blue-600 text-white rounded-md btn-hover">
+                    <i class="fa-solid fa-check mr-2"></i>
+                    <span class="hidden sm:inline">验证</span>
+                </button>
+                <button id="clear-btn" class="flex items-center justify-center px-3 py-2 bg-gray-600 text-white rounded-md btn-hover">
+                    <i class="fa-solid fa-trash mr-2"></i>
+                    <span class="hidden sm:inline">清空</span>
+                </button>
+                <button id="copy-btn" class="flex items-center justify-center px-3 py-2 bg-purple-600 text-white rounded-md btn-hover">
+                    <i class="fa-solid fa-copy mr-2"></i>
+                    <span class="hidden sm:inline">复制</span>
+                </button>
+                <button id="sample-btn" class="flex items-center justify-center px-3 py-2 bg-amber-600 text-white rounded-md btn-hover">
+                    <i class="fa-solid fa-file-code mr-2"></i>
+                    <span class="hidden sm:inline">示例</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- 编辑器区域 -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <!-- 输入区域 -->
+            <div class="flex flex-col">
+                <label for="json-input" class="text-sm font-medium text-gray-700 mb-2 flex items-center">
+                    <i class="fa-solid fa-pen-to-square mr-2 text-primary"></i>
+                    输入 JSON
+                </label>
+                <div class="relative flex-grow">
+                    <textarea id="json-input" class="w-full h-96 p-4 border border-gray-300 rounded-lg font-mono text-sm resize-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all editor-shadow" placeholder="请输入JSON字符串..."></textarea>
+                </div>
+            </div>
+
+            <!-- 输出区域 -->
+            <div class="flex flex-col">
+                <label for="json-output" class="text-sm font-medium text-gray-700 mb-2 flex items-center">
+                    <i class="fa-solid fa-code mr-2 text-secondary"></i>
+                    输出结果
+                </label>
+                <div class="relative flex-grow">
+                    <pre id="json-output" class="w-full h-96 p-4 border border-gray-300 rounded-lg font-mono text-sm overflow-auto editor-shadow bg-white"></pre>
+                </div>
+            </div>
+        </div>
+
+        <!-- 状态信息 -->
+        <div id="status-message" class="mt-6 p-4 rounded-lg hidden">
+            <div class="flex items-center">
+                <i id="status-icon" class="mr-3 text-xl"></i>
+                <span id="status-text"></span>
+            </div>
+        </div>
+
+        <!-- 功能说明 -->
+        <div class="mt-8 bg-white rounded-lg shadow-sm p-6">
+            <h2 class="text-lg font-semibold mb-4 flex items-center">
+                <i class="fa-solid fa-info-circle text-primary mr-2"></i>
+                功能说明
+            </h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div class="flex">
+                    <div class="flex-shrink-0 mt-1">
+                        <i class="fa-solid fa-indent text-primary"></i>
+                    </div>
+                    <div class="ml-3">
+                        <h3 class="text-sm font-medium text-gray-900">格式化</h3>
+                        <p class="mt-1 text-sm text-gray-600">将紧凑的JSON字符串转换为易读的格式化形式，带有适当的缩进和换行。</p>
+                    </div>
+                </div>
+                <div class="flex">
+                    <div class="flex-shrink-0 mt-1">
+                        <i class="fa-solid fa-compress text-secondary"></i>
+                    </div>
+                    <div class="ml-3">
+                        <h3 class="text-sm font-medium text-gray-900">压缩</h3>
+                        <p class="mt-1 text-sm text-gray-600">移除JSON中的所有空格和换行，生成紧凑的JSON字符串，节省存储空间。</p>
+                    </div>
+                </div>
+                <div class="flex">
+                    <div class="flex-shrink-0 mt-1">
+                        <i class="fa-solid fa-check text-blue-600"></i>
+                    </div>
+                    <div class="ml-3">
+                        <h3 class="text-sm font-medium text-gray-900">验证</h3>
+                        <p class="mt-1 text-sm text-gray-600">检查输入的JSON是否符合语法规范，并提示错误位置和原因。</p>
+                    </div>
+                </div>
+                <div class="flex">
+                    <div class="flex-shrink-0 mt-1">
+                        <i class="fa-solid fa-copy text-purple-600"></i>
+                    </div>
+                    <div class="ml-3">
+                        <h3 class="text-sm font-medium text-gray-900">复制</h3>
+                        <p class="mt-1 text-sm text-gray-600">将格式化后的JSON结果复制到剪贴板，方便粘贴使用。</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- 帮助模态框 -->
+    <div id="help-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+        <div class="bg-white rounded-lg shadow-xl max-w-lg w-full mx-4 max-h-[90vh] overflow-y-auto">
+            <div class="p-6">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-lg font-bold text-gray-900">使用帮助</h3>
+                    <button id="close-help" class="text-gray-500 hover:text-gray-700">
+                        <i class="fa-solid fa-times"></i>
+                    </button>
+                </div>
+                <div class="space-y-4">
+                    <div>
+                        <h4 class="font-medium text-gray-900">什么是JSON？</h4>
+                        <p class="text-sm text-gray-600 mt-1">JSON（JavaScript Object Notation）是一种轻量级的数据交换格式，易于人阅读和编写，同时也易于机器解析和生成。</p>
+                    </div>
+                    <div>
+                        <h4 class="font-medium text-gray-900">如何使用格式化功能？</h4>
+                        <p class="text-sm text-gray-600 mt-1">在左侧输入框中粘贴您的JSON字符串，然后点击"格式化"按钮，格式化后的JSON将显示在右侧输出框中。</p>
+                    </div>
+                    <div>
+                        <h4 class="font-medium text-gray-900">如何处理JSON验证错误？</h4>
+                        <p class="text-sm text-gray-600 mt-1">如果您的JSON格式不正确，验证功能会提示错误位置和原因。常见错误包括缺少引号、括号不匹配或尾随逗号等。</p>
+                    </div>
+                    <div>
+                        <h4 class="font-medium text-gray-900">示例JSON格式</h4>
+                        <pre class="bg-gray-50 p-3 rounded text-xs font-mono mt-1 overflow-x-auto">
+{
+  "name": "JSON格式化工具",
+  "version": "1.0.0",
+  "features": [
+    "格式化",
+    "压缩",
+    "验证",
+    "复制"
+  ],
+  "isFree": true,
+  "maxSize": null
+}</pre>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 页脚 -->
+    <footer class="bg-white border-t border-gray-200 mt-8">
+        <div class="container mx-auto px-4 py-6">
+            <div class="flex flex-col md:flex-row justify-between items-center">
+                <p class="text-sm text-gray-500">© 2023 JSON在线格式化工具 - 简洁高效的JSON处理工具</p>
+                <div class="flex space-x-4 mt-4 md:mt-0">
+                    <a href="#" class="text-gray-400 hover:text-primary transition-colors">
+                        <i class="fa-solid fa-github"></i>
+                    </a>
+                    <a href="#" class="text-gray-400 hover:text-primary transition-colors">
+                        <i class="fa-solid fa-feedback"></i>
+                    </a>
+                    <a href="#" class="text-gray-400 hover:text-primary transition-colors">
+                        <i class="fa-solid fa-shield"></i>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <!-- 通知组件 -->
+    <div id="notification" class="fixed bottom-4 right-4 p-4 rounded-lg shadow-lg transform transition-all duration-300 translate-y-full opacity-0 z-40 flex items-center max-w-xs">
+        <i id="notification-icon" class="mr-2"></i>
+        <span id="notification-message"></span>
+    </div>
+
+    <script>
+        // DOM元素
+        const jsonInput = document.getElementById('json-input');
+        const jsonOutput = document.getElementById('json-output');
+        const formatBtn = document.getElementById('format-btn');
+        const minifyBtn = document.getElementById('minify-btn');
+        const validateBtn = document.getElementById('validate-btn');
+        const clearBtn = document.getElementById('clear-btn');
+        const copyBtn = document.getElementById('copy-btn');
+        const sampleBtn = document.getElementById('sample-btn');
+        const statusMessage = document.getElementById('status-message');
+        const statusIcon = document.getElementById('status-icon');
+        const statusText = document.getElementById('status-text');
+        const notification = document.getElementById('notification');
+        const notificationIcon = document.getElementById('notification-icon');
+        const notificationMessage = document.getElementById('notification-message');
+        const themeToggle = document.getElementById('theme-toggle');
+        const helpBtn = document.getElementById('help-btn');
+        const helpModal = document.getElementById('help-modal');
+        const closeHelp = document.getElementById('close-help');
+        
+        // 示例JSON数据
+        const sampleJson = {
+            "name": "JSON格式化工具",
+            "version": "1.0.0",
+            "description": "一个在线JSON处理工具，支持格式化、压缩和验证",
+            "features": [
+                "格式化JSON",
+                "压缩JSON",
+                "验证JSON语法",
+                "复制结果到剪贴板",
+                "提供示例数据"
+            ],
+            "settings": {
+                "indentSize": 2,
+                "theme": "light",
+                "autoValidate": false
+            },
+            "stats": {
+                "users": 15000,
+                "dailyUsage": 3500,
+                "rating": 4.8
+            },
+            "isFree": true,
+            "lastUpdated": "2023-07-15T10:30:00Z"
+        };
+        
+        // 格式化JSON
+        function formatJson() {
+            const input = jsonInput.value.trim();
+            if (!input) {
+                showStatus('warning', '请输入JSON内容后再进行格式化');
+                return;
+            }
+            
+            try {
+                const parsed = JSON.parse(input);
+                const formatted = JSON.stringify(parsed, null, 2);
+                jsonOutput.innerHTML = highlightJson(formatted);
+                showStatus('success', 'JSON格式化成功');
+            } catch (error) {
+                showStatus('error', `JSON格式错误: ${getErrorDetails(error)}`);
+            }
+        }
+        
+        // 压缩JSON
+        function minifyJson() {
+            const input = jsonInput.value.trim();
+            if (!input) {
+                showStatus('warning', '请输入JSON内容后再进行压缩');
+                return;
+            }
+            
+            try {
+                const parsed = JSON.parse(input);
+                const minified = JSON.stringify(parsed);
+                jsonOutput.textContent = minified;
+                showStatus('success', 'JSON压缩成功');
+            } catch (error) {
+                showStatus('error', `JSON格式错误: ${getErrorDetails(error)}`);
+            }
+        }
+        
+        // 验证JSON
+        function validateJson() {
+            const input = jsonInput.value.trim();
+            if (!input) {
+                showStatus('warning', '请输入JSON内容后再进行验证');
+                return;
+            }
+            
+            try {
+                JSON.parse(input);
+                showStatus('success', 'JSON格式正确');
+            } catch (error) {
+                showStatus('error', `JSON格式错误: ${getErrorDetails(error)}`);
+            }
+        }
+        
+        // 清空输入
+        function clearInput() {
+            jsonInput.value = '';
+            jsonOutput.textContent = '';
+            statusMessage.classList.add('hidden');
+            showNotification('已清空输入和输出内容', 'info');
+        }
+        
+        // 复制结果
+        function copyResult() {
+            const textToCopy = jsonOutput.textContent;
+            if (!textToCopy) {
+                showNotification('没有可复制的内容', 'warning');
+                return;
+            }
+            
+            navigator.clipboard.writeText(textToCopy).then(() => {
+                showNotification('内容已复制到剪贴板', 'success');
+            }).catch(err => {
+                showNotification('复制失败，请手动复制', 'error');
+                console.error('复制失败:', err);
+            });
+        }
+        
+        // 加载示例
+        function loadSample() {
+            const sample = JSON.stringify(sampleJson, null, 2);
+            jsonInput.value = sample;
+            jsonOutput.innerHTML = highlightJson(sample);
+            showStatus('info', '已加载示例JSON数据');
+        }
+        
+        // 显示状态信息
+        function showStatus(type, message) {
+            statusMessage.classList.remove('hidden', 'bg-green-50', 'bg-red-50', 'bg-yellow-50', 'border-green-400', 'border-red-400', 'border-yellow-400', 'text-green-800', 'text-red-800', 'text-yellow-800');
+            
+            if (type === 'success') {
+                statusMessage.classList.add('bg-green-50', 'border-l-4', 'border-green-400', 'text-green-800');
+                statusIcon.className = 'fa-solid fa-check-circle text-green-500';
+            } else if (type === 'error') {
+                statusMessage.classList.add('bg-red-50', 'border-l-4', 'border-red-400', 'text-red-800');
+                statusIcon.className = 'fa-solid fa-exclamation-circle text-red-500';
+            } else if (type === 'warning') {
+                statusMessage.classList.add('bg-yellow-50', 'border-l-4', 'border-yellow-400', 'text-yellow-800');
+                statusIcon.className = 'fa-solid fa-exclamation-triangle text-yellow-500';
+            } else if (type === 'info') {
+                statusMessage.classList.add('bg-blue-50', 'border-l-4', 'border-blue-400', 'text-blue-800');
+                statusIcon.className = 'fa-solid fa-info-circle text-blue-500';
+            }
+            
+            statusText.textContent = message;
+        }
+        
+        // 显示通知
+        function showNotification(message, type = 'info') {
+            notificationMessage.textContent = message;
+            
+            // 设置图标和样式
+            notification.className = 'fixed bottom-4 right-4 p-4 rounded-lg shadow-lg transform transition-all duration-300 translate-y-0 opacity-100 z-40 flex items-center max-w-xs';
+            
+            if (type === 'success') {
+                notification.classList.add('bg-green-50', 'text-green-800');
+                notificationIcon.className = 'fa-solid fa-check-circle text-green-500 mr-2';
+            } else if (type === 'error') {
+                notification.classList.add('bg-red-50', 'text-red-800');
+                notificationIcon.className = 'fa-solid fa-exclamation-circle text-red-500 mr-2';
+            } else if (type === 'warning') {
+                notification.classList.add('bg-yellow-50', 'text-yellow-800');
+                notificationIcon.className = 'fa-solid fa-exclamation-triangle text-yellow-500 mr-2';
+            } else {
+                notification.classList.add('bg-blue-50', 'text-blue-800');
+                notificationIcon.className = 'fa-solid fa-info-circle text-blue-500 mr-2';
+            }
+            
+            // 3秒后隐藏通知
+            setTimeout(() => {
+                notification.classList.add('translate-y-full', 'opacity-0');
+            }, 3000);
+        }
+        
+        // 获取错误详情
+        function getErrorDetails(error) {
+            let message = error.message;
+            // 尝试提取错误位置信息
+            if (error.stack && error.stack.includes('JSON.parse')) {
+                const match = error.stack.match(/position (\d+)/);
+                if (match && match[1]) {
+                    message += `，位置: ${match[1]}`;
+                }
+            }
+            return message;
+        }
+        
+        // JSON语法高亮
+        function highlightJson(json) {
+            // 确保输入是字符串
+            if (typeof json !== 'string') {
+                json = JSON.stringify(json, null, 2);
+            }
+            
+            // 转义HTML特殊字符
+            json = json.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+            
+            // 使用正则表达式匹配JSON的不同部分并添加样式类
+            return json.replace(
+                /("(\\u[a-zA-Z0-9]{4}|\\[^u]|[^\\"])*"(\s*:)?|\b(true|false|null)\b|-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?)/g,
+                function(match) {
+                    let cls = 'json-number';
+                    if (/^"/.test(match)) {
+                        if (/:$/.test(match)) {
+                            cls = 'json-key';
+                        } else {
+                            cls = 'json-string';
+                        }
+                    } else if (/true|false/.test(match)) {
+                        cls = 'json-boolean';
+                    } else if (/null/.test(match)) {
+                        cls = 'json-null';
+                    }
+                    return `<span class="${cls}">${match}</span>`;
+                }
+            );
+        }
+        
+        // 切换深色/浅色模式
+        function toggleTheme() {
+            const isDark = document.documentElement.classList.toggle('dark');
+            const icon = themeToggle.querySelector('i');
+            
+            if (isDark) {
+                document.documentElement.classList.add('dark');
+                icon.className = 'fa-solid fa-sun text-yellow-400';
+                document.body.classList.add('bg-gray-900', 'text-white');
+                document.querySelectorAll('.bg-white').forEach(el => {
+                    el.classList.remove('bg-white');
+                    el.classList.add('bg-gray-800');
+                });
+                document.querySelectorAll('.bg-gray-50').forEach(el => {
+                    el.classList.remove('bg-gray-50');
+                    el.classList.add('bg-gray-800');
+                });
+                showNotification('已切换到深色模式', 'info');
+            } else {
+                document.documentElement.classList.remove('dark');
+                icon.className = 'fa-solid fa-moon text-gray-600';
+                document.body.classList.remove('bg-gray-900', 'text-white');
+                document.querySelectorAll('.bg-gray-800').forEach(el => {
+                    el.classList.remove('bg-gray-800');
+                    el.classList.add('bg-white');
+                });
+                showNotification('已切换到浅色模式', 'info');
+            }
+        }
+        
+        // 事件监听
+        formatBtn.addEventListener('click', formatJson);
+        minifyBtn.addEventListener('click', minifyJson);
+        validateBtn.addEventListener('click', validateJson);
+        clearBtn.addEventListener('click', clearInput);
+        copyBtn.addEventListener('click', copyResult);
+        sampleBtn.addEventListener('click', loadSample);
+        themeToggle.addEventListener('click', toggleTheme);
+        
+        // 帮助模态框
+        helpBtn.addEventListener('click', () => {
+            helpModal.classList.remove('hidden');
+        });
+        
+        closeHelp.addEventListener('click', () => {
+            helpModal.classList.add('hidden');
+        });
+        
+        // 点击模态框外部关闭
+        helpModal.addEventListener('click', (e) => {
+            if (e.target === helpModal) {
+                helpModal.classList.add('hidden');
+            }
+        });
+        
+        // 输入时自动验证
+        jsonInput.addEventListener('input', () => {
+            // 延迟验证，避免输入过程中频繁验证
+            clearTimeout(window.validateTimeout);
+            window.validateTimeout = setTimeout(() => {
+                validateJson();
+            }, 500);
+        });
+        
+        // 初始化页面
+        document.addEventListener('DOMContentLoaded', () => {
+            // 加载示例数据
+            loadSample();
+            
+            // 设置初始主题图标
+            themeToggle.querySelector('i').className = 'fa-solid fa-moon text-gray-600';
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,704 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>图片滤镜效果工具</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#3B82F6',
+                        secondary: '#8B5CF6',
+                        neutral: '#1F2937',
+                    },
+                    fontFamily: {
+                        inter: ['Inter', 'system-ui', 'sans-serif'],
+                    },
+                }
+            }
+        }
+    </script>
+    <style type="text/tailwindcss">
+        @layer utilities {
+            .content-auto {
+                content-visibility: auto;
+            }
+            .filter-btn {
+                @apply px-4 py-2 rounded-lg transition-all duration-300 flex items-center gap-2 justify-center;
+            }
+            .filter-btn-active {
+                @apply bg-primary text-white shadow-lg;
+            }
+            .filter-btn-inactive {
+                @apply bg-gray-100 text-gray-700 hover:bg-gray-200;
+            }
+            .control-slider {
+                @apply w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer;
+            }
+            .control-slider::-webkit-slider-thumb {
+                @apply appearance-none w-5 h-5 rounded-full bg-primary cursor-pointer;
+            }
+        }
+    </style>
+</head>
+<body class="font-inter bg-gray-50 min-h-screen">
+    <header class="bg-gradient-to-r from-primary to-secondary text-white py-6 px-4 shadow-md">
+        <div class="container mx-auto">
+            <h1 class="text-2xl md:text-3xl font-bold flex items-center gap-2">
+                <i class="fa fa-magic"></i> 图片滤镜效果工具
+            </h1>
+            <p class="mt-1 text-blue-100">上传图片并尝试各种滤镜效果</p>
+        </div>
+    </header>
+
+    <main class="container mx-auto px-4 py-8">
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <!-- 左侧控制面板 -->
+            <div class="lg:col-span-1 space-y-6">
+                <!-- 图片上传区域 -->
+                <div class="bg-white rounded-xl p-5 shadow-md">
+                    <h2 class="text-xl font-semibold mb-4 flex items-center gap-2">
+                        <i class="fa fa-upload text-primary"></i> 上传图片
+                    </h2>
+                    <div class="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-primary transition-colors cursor-pointer" id="upload-area">
+                        <input type="file" id="image-upload" accept="image/*" class="hidden">
+                        <i class="fa fa-image text-4xl text-gray-400 mb-2"></i>
+                        <p class="text-gray-500">点击或拖放图片到此处</p>
+                        <p class="text-xs text-gray-400 mt-1">支持 JPG、PNG、GIF 格式</p>
+                    </div>
+                    <div class="mt-4 text-center">
+                        <button id="reset-btn" class="px-4 py-2 bg-gray-200 rounded-lg text-gray-700 hover:bg-gray-300 transition-colors hidden">
+                            <i class="fa fa-refresh mr-1"></i> 重置图片
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 滤镜选择 -->
+                <div class="bg-white rounded-xl p-5 shadow-md">
+                    <h2 class="text-xl font-semibold mb-4 flex items-center gap-2">
+                        <i class="fa fa-th-large text-primary"></i> 滤镜效果
+                    </h2>
+                    <div class="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                        <button class="filter-btn filter-btn-active" data-filter="original">
+                            <i class="fa fa-picture-o"></i>
+                            <span class="text-xs">原图</span>
+                        </button>
+                        <button class="filter-btn filter-btn-inactive" data-filter="grayscale">
+                            <i class="fa fa-adjust"></i>
+                            <span class="text-xs">灰度</span>
+                        </button>
+                        <button class="filter-btn filter-btn-inactive" data-filter="invert">
+                            <i class="fa fa-ban"></i>
+                            <span class="text-xs">反转</span>
+                        </button>
+                        <button class="filter-btn filter-btn-inactive" data-filter="sepia">
+                            <i class="fa fa-hourglass-half"></i>
+                            <span class="text-xs">复古</span>
+                        </button>
+                        <button class="filter-btn filter-btn-inactive" data-filter="blur">
+                            <i class="fa fa-eye-slash"></i>
+                            <span class="text-xs">模糊</span>
+                        </button>
+                        <button class="filter-btn filter-btn-inactive" data-filter="brightness">
+                            <i class="fa fa-sun-o"></i>
+                            <span class="text-xs">亮度</span>
+                        </button>
+                        <button class="filter-btn filter-btn-inactive" data-filter="contrast">
+                            <i class="fa fa-street-view"></i>
+                            <span class="text-xs">对比度</span>
+                        </button>
+                        <button class="filter-btn filter-btn-inactive" data-filter="saturate">
+                            <i class="fa fa-tint"></i>
+                            <span class="text-xs">饱和度</span>
+                        </button>
+                        <button class="filter-btn filter-btn-inactive" data-filter="hue-rotate">
+                            <i class="fa fa-refresh"></i>
+                            <span class="text-xs">色相</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 滤镜参数调整 -->
+                <div class="bg-white rounded-xl p-5 shadow-md" id="filter-controls">
+                    <h2 class="text-xl font-semibold mb-4 flex items-center gap-2">
+                        <i class="fa fa-sliders text-primary"></i> 参数调整
+                    </h2>
+                    
+                    <!-- 模糊参数 -->
+                    <div class="filter-control" data-for="blur">
+                        <div class="flex justify-between mb-1">
+                            <label class="text-sm font-medium">模糊程度</label>
+                            <span class="text-sm text-gray-500" id="blur-value">5px</span>
+                        </div>
+                        <input type="range" min="0" max="20" value="5" class="control-slider" id="blur-slider">
+                    </div>
+                    
+                    <!-- 亮度参数 -->
+                    <div class="filter-control hidden" data-for="brightness">
+                        <div class="flex justify-between mb-1">
+                            <label class="text-sm font-medium">亮度</label>
+                            <span class="text-sm text-gray-500" id="brightness-value">150%</span>
+                        </div>
+                        <input type="range" min="0" max="300" value="150" class="control-slider" id="brightness-slider">
+                    </div>
+                    
+                    <!-- 对比度参数 -->
+                    <div class="filter-control hidden" data-for="contrast">
+                        <div class="flex justify-between mb-1">
+                            <label class="text-sm font-medium">对比度</label>
+                            <span class="text-sm text-gray-500" id="contrast-value">150%</span>
+                        </div>
+                        <input type="range" min="0" max="300" value="150" class="control-slider" id="contrast-slider">
+                    </div>
+                    
+                    <!-- 饱和度参数 -->
+                    <div class="filter-control hidden" data-for="saturate">
+                        <div class="flex justify-between mb-1">
+                            <label class="text-sm font-medium">饱和度</label>
+                            <span class="text-sm text-gray-500" id="saturate-value">200%</span>
+                        </div>
+                        <input type="range" min="0" max="300" value="200" class="control-slider" id="saturate-slider">
+                    </div>
+                    
+                    <!-- 色相参数 -->
+                    <div class="filter-control hidden" data-for="hue-rotate">
+                        <div class="flex justify-between mb-1">
+                            <label class="text-sm font-medium">色相角度</label>
+                            <span class="text-sm text-gray-500" id="hue-rotate-value">90deg</span>
+                        </div>
+                        <input type="range" min="0" max="360" value="90" class="control-slider" id="hue-rotate-slider">
+                    </div>
+                </div>
+
+                <!-- 操作按钮 -->
+                <div class="bg-white rounded-xl p-5 shadow-md">
+                    <h2 class="text-xl font-semibold mb-4 flex items-center gap-2">
+                        <i class="fa fa-cog text-primary"></i> 操作
+                    </h2>
+                    <div class="grid grid-cols-2 gap-3">
+                        <button id="download-btn" class="px-4 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed" disabled>
+                            <i class="fa fa-download"></i> 下载图片
+                        </button>
+                        <button id="random-filter-btn" class="px-4 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed" disabled>
+                            <i class="fa fa-random"></i> 随机滤镜
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 右侧预览区域 -->
+            <div class="lg:col-span-2">
+                <div class="bg-white rounded-xl p-5 shadow-md h-full flex flex-col">
+                    <h2 class="text-xl font-semibold mb-4 flex items-center gap-2">
+                        <i class="fa fa-eye text-primary"></i> 预览效果
+                    </h2>
+                    
+                    <div class="flex-grow flex items-center justify-center bg-gray-100 rounded-lg overflow-hidden relative" id="preview-container">
+                        <!-- 初始状态提示 -->
+                        <div id="initial-message" class="text-center p-8">
+                            <i class="fa fa-image text-5xl text-gray-300 mb-3"></i>
+                            <p class="text-gray-500">上传图片后将在这里显示预览效果</p>
+                        </div>
+                        
+                        <!-- 图片预览区域 -->
+                        <div id="image-preview-container" class="hidden w-full h-full flex items-center justify-center p-4">
+                            <img id="original-image" class="hidden" alt="原始图片">
+                            <img id="filtered-image" class="max-w-full max-h-full object-contain shadow-lg transition-all duration-500" alt="滤镜效果图片">
+                        </div>
+                        
+                        <!-- 加载中状态 -->
+                        <div id="loading-indicator" class="hidden absolute inset-0 bg-black/30 flex items-center justify-center">
+                            <div class="bg-white p-4 rounded-full">
+                                <i class="fa fa-circle-o-notch fa-spin text-2xl text-primary"></i>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- 滤镜信息 -->
+                    <div class="mt-4 p-3 bg-gray-50 rounded-lg border border-gray-200">
+                        <h3 class="font-medium text-gray-700 mb-1">当前效果: <span id="current-filter-name" class="text-primary">原图</span></h3>
+                        <p class="text-sm text-gray-500" id="current-filter-desc">未应用任何滤镜效果</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 滤镜效果展示区 -->
+        <div class="mt-10">
+            <h2 class="text-2xl font-semibold mb-6 flex items-center gap-2">
+                <i class="fa fa-th text-primary"></i> 滤镜效果示例
+            </h2>
+            
+            <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+                <div class="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow">
+                    <div class="h-40 bg-gray-100 flex items-center justify-center">
+                        <img src="https://picsum.photos/300/200?random=1" alt="原图示例" class="w-full h-full object-cover filter-example" data-filter="original">
+                    </div>
+                    <div class="p-3 text-center">
+                        <h3 class="font-medium">原图</h3>
+                        <p class="text-xs text-gray-500">无滤镜效果</p>
+                    </div>
+                </div>
+                
+                <div class="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow">
+                    <div class="h-40 bg-gray-100 flex items-center justify-center">
+                        <img src="https://picsum.photos/300/200?random=1" alt="灰度示例" class="w-full h-full object-cover filter-example" data-filter="grayscale">
+                    </div>
+                    <div class="p-3 text-center">
+                        <h3 class="font-medium">灰度</h3>
+                        <p class="text-xs text-gray-500">黑白效果</p>
+                    </div>
+                </div>
+                
+                <div class="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow">
+                    <div class="h-40 bg-gray-100 flex items-center justify-center">
+                        <img src="https://picsum.photos/300/200?random=1" alt="反转示例" class="w-full h-full object-cover filter-example" data-filter="invert">
+                    </div>
+                    <div class="p-3 text-center">
+                        <h3 class="font-medium">反转</h3>
+                        <p class="text-xs text-gray-500">颜色反转</p>
+                    </div>
+                </div>
+                
+                <div class="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow">
+                    <div class="h-40 bg-gray-100 flex items-center justify-center">
+                        <img src="https://picsum.photos/300/200?random=1" alt="复古示例" class="w-full h-full object-cover filter-example" data-filter="sepia">
+                    </div>
+                    <div class="p-3 text-center">
+                        <h3 class="font-medium">复古</h3>
+                        <p class="text-xs text-gray-500">怀旧色调</p>
+                    </div>
+                </div>
+                
+                <div class="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow">
+                    <div class="h-40 bg-gray-100 flex items-center justify-center">
+                        <img src="https://picsum.photos/300/200?random=1" alt="模糊示例" class="w-full h-full object-cover filter-example" data-filter="blur">
+                    </div>
+                    <div class="p-3 text-center">
+                        <h3 class="font-medium">模糊</h3>
+                        <p class="text-xs text-gray-500">高斯模糊</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <footer class="bg-neutral text-white py-6 px-4 mt-12">
+        <div class="container mx-auto text-center">
+            <p>图片滤镜效果工具 &copy; 2023</p>
+            <p class="text-gray-400 text-sm mt-1">支持多种图片滤镜效果，实时预览和下载</p>
+        </div>
+    </footer>
+
+    <script>
+        // 全局变量
+        let currentImage = null;
+        let currentFilter = 'original';
+        let filterSettings = {
+            blur: 5,
+            brightness: 150,
+            contrast: 150,
+            saturate: 200,
+            'hue-rotate': 90
+        };
+        
+        // 滤镜描述信息
+        const filterDescriptions = {
+            original: '未应用任何滤镜效果',
+            grayscale: '将图片转换为黑白灰度效果',
+            invert: '反转图片的颜色通道',
+            sepia: '应用复古怀旧的棕褐色调',
+            blur: '对图片应用高斯模糊效果',
+            brightness: '调整图片的亮度',
+            contrast: '调整图片的对比度',
+            saturate: '调整图片的色彩饱和度',
+            'hue-rotate': '旋转图片的色相角度'
+        };
+
+        // DOM 元素
+        const elements = {
+            uploadArea: document.getElementById('upload-area'),
+            imageUpload: document.getElementById('image-upload'),
+            resetBtn: document.getElementById('reset-btn'),
+            downloadBtn: document.getElementById('download-btn'),
+            randomFilterBtn: document.getElementById('random-filter-btn'),
+            initialMessage: document.getElementById('initial-message'),
+            imagePreviewContainer: document.getElementById('image-preview-container'),
+            originalImage: document.getElementById('original-image'),
+            filteredImage: document.getElementById('filtered-image'),
+            loadingIndicator: document.getElementById('loading-indicator'),
+            currentFilterName: document.getElementById('current-filter-name'),
+            currentFilterDesc: document.getElementById('current-filter-desc'),
+            filterButtons: document.querySelectorAll('.filter-btn'),
+            filterControls: document.querySelectorAll('.filter-control'),
+            // 滑块控件
+            blurSlider: document.getElementById('blur-slider'),
+            blurValue: document.getElementById('blur-value'),
+            brightnessSlider: document.getElementById('brightness-slider'),
+            brightnessValue: document.getElementById('brightness-value'),
+            contrastSlider: document.getElementById('contrast-slider'),
+            contrastValue: document.getElementById('contrast-value'),
+            saturateSlider: document.getElementById('saturate-slider'),
+            saturateValue: document.getElementById('saturate-value'),
+            hueRotateSlider: document.getElementById('hue-rotate-slider'),
+            hueRotateValue: document.getElementById('hue-rotate-value'),
+            // 示例图片
+            filterExamples: document.querySelectorAll('.filter-example')
+        };
+
+        // 初始化
+        document.addEventListener('DOMContentLoaded', () => {
+            initEventListeners();
+            applyExampleFilters();
+        });
+
+        // 初始化事件监听器
+        function initEventListeners() {
+            // 图片上传区域点击事件
+            elements.uploadArea.addEventListener('click', () => {
+                elements.imageUpload.click();
+            });
+            
+            // 拖放功能
+            elements.uploadArea.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                elements.uploadArea.classList.add('border-primary', 'bg-blue-50');
+            });
+            
+            elements.uploadArea.addEventListener('dragleave', () => {
+                elements.uploadArea.classList.remove('border-primary', 'bg-blue-50');
+            });
+            
+            elements.uploadArea.addEventListener('drop', (e) => {
+                e.preventDefault();
+                elements.uploadArea.classList.remove('border-primary', 'bg-blue-50');
+                
+                if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+                    handleImageUpload(e.dataTransfer.files[0]);
+                }
+            });
+            
+            // 图片选择事件
+            elements.imageUpload.addEventListener('change', (e) => {
+                if (e.target.files && e.target.files[0]) {
+                    handleImageUpload(e.target.files[0]);
+                }
+            });
+            
+            // 重置按钮
+            elements.resetBtn.addEventListener('click', resetImage);
+            
+            // 下载按钮
+            elements.downloadBtn.addEventListener('click', downloadImage);
+            
+            // 随机滤镜按钮
+            elements.randomFilterBtn.addEventListener('click', applyRandomFilter);
+            
+            // 滤镜按钮点击事件
+            elements.filterButtons.forEach(button => {
+                button.addEventListener('click', () => {
+                    const filter = button.dataset.filter;
+                    selectFilter(filter);
+                });
+            });
+            
+            // 滑块控件事件
+            elements.blurSlider.addEventListener('input', (e) => {
+                const value = e.target.value;
+                filterSettings.blur = value;
+                elements.blurValue.textContent = `${value}px`;
+                applyFilter();
+            });
+            
+            elements.brightnessSlider.addEventListener('input', (e) => {
+                const value = e.target.value;
+                filterSettings.brightness = value;
+                elements.brightnessValue.textContent = `${value}%`;
+                applyFilter();
+            });
+            
+            elements.contrastSlider.addEventListener('input', (e) => {
+                const value = e.target.value;
+                filterSettings.contrast = value;
+                elements.contrastValue.textContent = `${value}%`;
+                applyFilter();
+            });
+            
+            elements.saturateSlider.addEventListener('input', (e) => {
+                const value = e.target.value;
+                filterSettings.saturate = value;
+                elements.saturateValue.textContent = `${value}%`;
+                applyFilter();
+            });
+            
+            elements.hueRotateSlider.addEventListener('input', (e) => {
+                const value = e.target.value;
+                filterSettings['hue-rotate'] = value;
+                elements.hueRotateValue.textContent = `${value}deg`;
+                applyFilter();
+            });
+            
+            // 示例图片点击事件
+            elements.filterExamples.forEach(example => {
+                example.addEventListener('click', () => {
+                    const filter = example.dataset.filter;
+                    selectFilter(filter);
+                });
+            });
+        }
+
+        // 处理图片上传
+        function handleImageUpload(file) {
+            // 检查文件类型
+            if (!file.type.match('image.*')) {
+                alert('请上传图片文件');
+                return;
+            }
+            
+            showLoading();
+            
+            const reader = new FileReader();
+            
+            reader.onload = (e) => {
+                // 设置原始图片和过滤图片的源
+                elements.originalImage.src = e.target.result;
+                elements.filteredImage.src = e.target.result;
+                
+                // 保存当前图片
+                currentImage = e.target.result;
+                
+                // 显示预览区域，隐藏初始消息
+                elements.initialMessage.classList.add('hidden');
+                elements.imagePreviewContainer.classList.remove('hidden');
+                
+                // 启用按钮
+                elements.resetBtn.classList.remove('hidden');
+                elements.downloadBtn.disabled = false;
+                elements.randomFilterBtn.disabled = false;
+                
+                // 应用默认滤镜
+                selectFilter('original');
+                
+                hideLoading();
+            };
+            
+            reader.readAsDataURL(file);
+        }
+
+        // 选择滤镜
+        function selectFilter(filter) {
+            if (!currentImage && filter !== 'original') return;
+            
+            // 更新当前滤镜
+            currentFilter = filter;
+            
+            // 更新按钮状态
+            elements.filterButtons.forEach(button => {
+                if (button.dataset.filter === filter) {
+                    button.classList.remove('filter-btn-inactive');
+                    button.classList.add('filter-btn-active');
+                } else {
+                    button.classList.remove('filter-btn-active');
+                    button.classList.add('filter-btn-inactive');
+                }
+            });
+            
+            // 显示相应的控制项
+            elements.filterControls.forEach(control => {
+                if (control.dataset.for === filter) {
+                    control.classList.remove('hidden');
+                } else {
+                    control.classList.add('hidden');
+                }
+            });
+            
+            // 更新滤镜信息
+            elements.currentFilterName.textContent = getFilterDisplayName(filter);
+            elements.currentFilterDesc.textContent = filterDescriptions[filter];
+            
+            // 应用滤镜
+            applyFilter();
+        }
+
+        // 应用滤镜
+        function applyFilter() {
+            if (!currentImage) return;
+            
+            let filterValue = '';
+            
+            switch (currentFilter) {
+                case 'original':
+                    filterValue = 'none';
+                    break;
+                case 'grayscale':
+                    filterValue = 'grayscale(100%)';
+                    break;
+                case 'invert':
+                    filterValue = 'invert(100%)';
+                    break;
+                case 'sepia':
+                    filterValue = 'sepia(100%)';
+                    break;
+                case 'blur':
+                    filterValue = `blur(${filterSettings.blur}px)`;
+                    break;
+                case 'brightness':
+                    filterValue = `brightness(${filterSettings.brightness}%)`;
+                    break;
+                case 'contrast':
+                    filterValue = `contrast(${filterSettings.contrast}%)`;
+                    break;
+                case 'saturate':
+                    filterValue = `saturate(${filterSettings.saturate}%)`;
+                    break;
+                case 'hue-rotate':
+                    filterValue = `hue-rotate(${filterSettings['hue-rotate']}deg)`;
+                    break;
+            }
+            
+            // 应用滤镜到图片
+            elements.filteredImage.style.filter = filterValue;
+        }
+
+        // 重置图片
+        function resetImage() {
+            selectFilter('original');
+        }
+
+        // 下载图片
+        function downloadImage() {
+            if (!currentImage) return;
+            
+            showLoading();
+            
+            // 创建一个临时canvas来绘制带滤镜的图片
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+            const img = new Image();
+            
+            img.onload = () => {
+                // 设置canvas尺寸
+                canvas.width = img.width;
+                canvas.height = img.height;
+                
+                // 应用滤镜
+                ctx.filter = elements.filteredImage.style.filter;
+                
+                // 绘制图片
+                ctx.drawImage(img, 0, 0);
+                
+                // 创建下载链接
+                const link = document.createElement('a');
+                link.download = `filtered-image-${new Date().getTime()}.png`;
+                link.href = canvas.toDataURL('image/png');
+                link.click();
+                
+                hideLoading();
+            };
+            
+            img.src = currentImage;
+        }
+
+        // 应用随机滤镜
+        function applyRandomFilter() {
+            if (!currentImage) return;
+            
+            const filters = ['grayscale', 'invert', 'sepia', 'blur', 'brightness', 'contrast', 'saturate', 'hue-rotate'];
+            const randomFilter = filters[Math.floor(Math.random() * filters.length)];
+            
+            // 如果是可调节的滤镜，随机设置参数
+            if (['blur', 'brightness', 'contrast', 'saturate', 'hue-rotate'].includes(randomFilter)) {
+                switch (randomFilter) {
+                    case 'blur':
+                        filterSettings.blur = Math.floor(Math.random() * 20) + 1;
+                        elements.blurSlider.value = filterSettings.blur;
+                        elements.blurValue.textContent = `${filterSettings.blur}px`;
+                        break;
+                    case 'brightness':
+                        filterSettings.brightness = Math.floor(Math.random() * 200) + 50;
+                        elements.brightnessSlider.value = filterSettings.brightness;
+                        elements.brightnessValue.textContent = `${filterSettings.brightness}%`;
+                        break;
+                    case 'contrast':
+                        filterSettings.contrast = Math.floor(Math.random() * 200) + 50;
+                        elements.contrastSlider.value = filterSettings.contrast;
+                        elements.contrastValue.textContent = `${filterSettings.contrast}%`;
+                        break;
+                    case 'saturate':
+                        filterSettings.saturate = Math.floor(Math.random() * 300);
+                        elements.saturateSlider.value = filterSettings.saturate;
+                        elements.saturateValue.textContent = `${filterSettings.saturate}%`;
+                        break;
+                    case 'hue-rotate':
+                        filterSettings['hue-rotate'] = Math.floor(Math.random() * 360);
+                        elements.hueRotateSlider.value = filterSettings['hue-rotate'];
+                        elements.hueRotateValue.textContent = `${filterSettings['hue-rotate']}deg`;
+                        break;
+                }
+            }
+            
+            // 应用随机滤镜
+            selectFilter(randomFilter);
+        }
+
+        // 为示例图片应用滤镜
+        function applyExampleFilters() {
+            elements.filterExamples.forEach(example => {
+                const filter = example.dataset.filter;
+                let filterValue = '';
+                
+                switch (filter) {
+                    case 'original':
+                        filterValue = 'none';
+                        break;
+                    case 'grayscale':
+                        filterValue = 'grayscale(100%)';
+                        break;
+                    case 'invert':
+                        filterValue = 'invert(100%)';
+                        break;
+                    case 'sepia':
+                        filterValue = 'sepia(100%)';
+                        break;
+                    case 'blur':
+                        filterValue = 'blur(5px)';
+                        break;
+                }
+                
+                example.style.filter = filterValue;
+            });
+        }
+
+        // 获取滤镜显示名称
+        function getFilterDisplayName(filter) {
+            const names = {
+                'original': '原图',
+                'grayscale': '灰度',
+                'invert': '反转',
+                'sepia': '复古',
+                'blur': '模糊',
+                'brightness': '亮度',
+                'contrast': '对比度',
+                'saturate': '饱和度',
+                'hue-rotate': '色相'
+            };
+            
+            return names[filter] || filter;
+        }
+
+        // 显示加载状态
+        function showLoading() {
+            elements.loadingIndicator.classList.remove('hidden');
+        }
+
+        // 隐藏加载状态
+        function hideLoading() {
+            elements.loadingIndicator.classList.add('hidden');
+        }
+    </script>
+</body>
+</html>

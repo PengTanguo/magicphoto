@@ -1,0 +1,470 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>在线音频格式化工具</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#3B82F6',
+                        secondary: '#10B981',
+                        accent: '#8B5CF6',
+                        danger: '#EF4444',
+                        neutral: '#1F2937',
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'system-ui', 'sans-serif'],
+                    },
+                }
+            }
+        }
+    </script>
+    
+    <style type="text/tailwindcss">
+        @layer utilities {
+            .btn-primary {
+                @apply bg-primary text-white px-4 py-2 rounded-lg hover:bg-primary/90 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-primary/50;
+            }
+            .btn-secondary {
+                @apply bg-white text-neutral border border-gray-300 px-4 py-2 rounded-lg hover:bg-gray-50 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-primary/30;
+            }
+            .input-control {
+                @apply w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all duration-200;
+            }
+            .card {
+                @apply bg-white rounded-xl shadow-sm border border-gray-100 p-6 transition-all duration-300 hover:shadow-md;
+            }
+            .upload-area {
+                @apply border-2 border-dashed border-gray-300 rounded-xl p-8 text-center transition-all duration-300 hover:border-primary/50;
+            }
+            .upload-area.active {
+                @apply border-primary bg-primary/5;
+            }
+        }
+    </style>
+</head>
+<body class="bg-gray-50 font-sans text-neutral min-h-screen">
+    <!-- 顶部导航 -->
+    <header class="bg-white shadow-sm sticky top-0 z-50">
+        <div class="container mx-auto px-4 py-4 flex justify-between items-center">
+            <div class="flex items-center space-x-2">
+                <i class="fa fa-music text-primary text-2xl"></i>
+                <h1 class="text-xl font-bold">音频格式化工具</h1>
+            </div>
+            <nav>
+                <ul class="flex space-x-6">
+                    <li><a href="#" class="text-gray-600 hover:text-primary transition-colors"><i class="fa fa-question-circle mr-1"></i>帮助</a></li>
+                    <li><a href="#" class="text-gray-600 hover:text-primary transition-colors"><i class="fa fa-info-circle mr-1"></i>关于</a></li>
+                </ul>
+            </nav>
+        </div>
+    </header>
+
+    <!-- 主要内容区 -->
+    <main class="container mx-auto px-4 py-8">
+        <!-- 介绍部分 -->
+        <section class="mb-10 text-center max-w-3xl mx-auto">
+            <h2 class="text-[clamp(1.5rem,3vw,2.5rem)] font-bold mb-4">简单高效的音频格式转换</h2>
+            <p class="text-gray-600 text-lg">支持多种音频格式之间的转换，调整音频质量，满足您的各种需求</p>
+        </section>
+        
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <!-- 左侧：上传区域 -->
+            <div class="lg:col-span-2">
+                <div class="card h-full">
+                    <h3 class="text-lg font-semibold mb-6 flex items-center">
+                        <i class="fa fa-upload text-primary mr-2"></i>上传音频文件
+                    </h3>
+                    
+                    <!-- 上传区域 -->
+                    <div id="uploadArea" class="upload-area mb-6">
+                        <input type="file" id="fileInput" accept="audio/*" class="hidden">
+                        <label for="fileInput" class="cursor-pointer">
+                            <div class="flex flex-col items-center">
+                                <i class="fa fa-cloud-upload text-5xl text-gray-400 mb-4"></i>
+                                <p class="text-gray-600 mb-2">点击或拖放音频文件到此处</p>
+                                <p class="text-gray-400 text-sm">支持 MP3, WAV, OGG, FLAC, AAC 等格式</p>
+                            </div>
+                        </label>
+                    </div>
+                    
+                    <!-- 已上传文件列表 -->
+                    <div id="fileList" class="hidden">
+                        <h4 class="font-medium mb-3">已选择文件</h4>
+                        <div id="selectedFile" class="flex items-center justify-between p-3 bg-gray-50 rounded-lg mb-4">
+                            <div class="flex items-center">
+                                <i class="fa fa-file-audio-o text-primary mr-3 text-xl"></i>
+                                <div>
+                                    <p id="fileName" class="font-medium truncate max-w-md"></p>
+                                    <p id="fileInfo" class="text-sm text-gray-500"></p>
+                                </div>
+                            </div>
+                            <button id="removeFile" class="text-gray-400 hover:text-danger transition-colors">
+                                <i class="fa fa-times"></i>
+                            </button>
+                        </div>
+                        
+                        <!-- 音频预览 -->
+                        <div id="audioPreview" class="mt-6 hidden">
+                            <h4 class="font-medium mb-3">音频预览</h4>
+                            <audio id="audioPlayer" controls class="w-full"></audio>
+                        </div>
+                    </div>
+                    
+                    <!-- 处理进度 -->
+                    <div id="processingArea" class="hidden">
+                        <h4 class="font-medium mb-3">正在处理...</h4>
+                        <div class="bg-gray-200 rounded-full h-2.5 mb-4">
+                            <div id="progressBar" class="bg-primary h-2.5 rounded-full" style="width: 0%"></div>
+                        </div>
+                        <p id="progressText" class="text-sm text-gray-500 text-center">准备开始处理...</p>
+                    </div>
+                    
+                    <!-- 处理完成 -->
+                    <div id="resultArea" class="hidden">
+                        <div class="bg-green-50 border border-green-200 rounded-lg p-4 mb-6">
+                            <div class="flex items-start">
+                                <i class="fa fa-check-circle text-green-500 mt-1 mr-3"></i>
+                                <div>
+                                    <h4 class="font-medium text-green-800">处理完成！</h4>
+                                    <p class="text-green-700 text-sm">您的音频文件已成功转换</p>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="flex flex-col sm:flex-row items-center justify-between gap-4">
+                            <div class="flex items-center">
+                                <i class="fa fa-file-audio-o text-secondary mr-3 text-xl"></i>
+                                <div>
+                                    <p id="resultFileName" class="font-medium"></p>
+                                    <p id="resultFileInfo" class="text-sm text-gray-500"></p>
+                                </div>
+                            </div>
+                            <button id="downloadBtn" class="btn-primary flex items-center">
+                                <i class="fa fa-download mr-2"></i>
+                                <span>下载文件</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 右侧：设置区域 -->
+            <div>
+                <div class="card sticky top-24">
+                    <h3 class="text-lg font-semibold mb-6 flex items-center">
+                        <i class="fa fa-cog text-primary mr-2"></i>转换设置
+                    </h3>
+                    
+                    <form id="formatSettings">
+                        <div class="mb-6">
+                            <label for="outputFormat" class="block text-sm font-medium text-gray-700 mb-2">输出格式</label>
+                            <select id="outputFormat" class="input-control">
+                                <option value="mp3">MP3 - 最常用格式</option>
+                                <option value="wav">WAV - 无损格式</option>
+                                <option value="ogg">OGG - 开源格式</option>
+                                <option value="flac">FLAC - 无损压缩</option>
+                                <option value="aac">AAC - 高质量压缩</option>
+                            </select>
+                        </div>
+                        
+                        <div class="mb-6">
+                            <label for="quality" class="block text-sm font-medium text-gray-700 mb-2">音频质量</label>
+                            <select id="quality" class="input-control">
+                                <option value="low">低质量 - 小文件 size</option>
+                                <option value="medium" selected>中等质量 - 平衡</option>
+                                <option value="high">高质量 - 更好的音质</option>
+                                <option value="lossless">无损 - 原始音质</option>
+                            </select>
+                        </div>
+                        
+                        <div class="mb-6">
+                            <label for="bitrate" class="block text-sm font-medium text-gray-700 mb-2">比特率</label>
+                            <select id="bitrate" class="input-control">
+                                <option value="64">64 kbps - 低</option>
+                                <option value="128">128 kbps - 中低</option>
+                                <option value="192" selected>192 kbps - 中</option>
+                                <option value="256">256 kbps - 高</option>
+                                <option value="320">320 kbps - 最高</option>
+                                <option value="auto">自动 - 根据质量</option>
+                            </select>
+                        </div>
+                        
+                        <div class="mb-6">
+                            <label class="block text-sm font-medium text-gray-700 mb-2">附加选项</label>
+                            <div class="space-y-3">
+                                <div class="flex items-center">
+                                    <input type="checkbox" id="trimSilence" class="w-4 h-4 text-primary rounded border-gray-300 focus:ring-primary">
+                                    <label for="trimSilence" class="ml-2 text-sm text-gray-700">去除静音部分</label>
+                                </div>
+                                <div class="flex items-center">
+                                    <input type="checkbox" id="normalize" class="w-4 h-4 text-primary rounded border-gray-300 focus:ring-primary">
+                                    <label for="normalize" class="ml-2 text-sm text-gray-700">音量标准化</label>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <button type="button" id="convertBtn" class="btn-primary w-full flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed" disabled>
+                            <i class="fa fa-magic mr-2"></i>
+                            <span>开始转换</span>
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 支持的格式 -->
+        <section class="mt-16">
+            <h3 class="text-xl font-bold mb-6 text-center">支持的音频格式</h3>
+            <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-6">
+                <div class="card text-center">
+                    <i class="fa fa-music text-4xl text-primary mb-3"></i>
+                    <h4 class="font-semibold">MP3</h4>
+                    <p class="text-sm text-gray-500 mt-1">最流行的音频格式</p>
+                </div>
+                <div class="card text-center">
+                    <i class="fa fa-volume-up text-4xl text-primary mb-3"></i>
+                    <h4 class="font-semibold">WAV</h4>
+                    <p class="text-sm text-gray-500 mt-1">无损音频格式</p>
+                </div>
+                <div class="card text-center">
+                    <i class="fa fa-headphones text-4xl text-primary mb-3"></i>
+                    <h4 class="font-semibold">OGG</h4>
+                    <p class="text-sm text-gray-500 mt-1">开源音频格式</p>
+                </div>
+                <div class="card text-center">
+                    <i class="fa fa-compress text-4xl text-primary mb-3"></i>
+                    <h4 class="font-semibold">FLAC</h4>
+                    <p class="text-sm text-gray-500 mt-1">无损压缩格式</p>
+                </div>
+                <div class="card text-center">
+                    <i class="fa fa-soundcloud text-4xl text-primary mb-3"></i>
+                    <h4 class="font-semibold">AAC</h4>
+                    <p class="text-sm text-gray-500 mt-1">高级音频编码</p>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- 页脚 -->
+    <footer class="bg-white border-t border-gray-200 mt-16 py-8">
+        <div class="container mx-auto px-4">
+            <div class="flex flex-col md:flex-row justify-between items-center">
+                <div class="mb-4 md:mb-0">
+                    <p class="text-gray-500 text-sm">© 2023 音频格式化工具 - 免费在线音频转换服务</p>
+                </div>
+                <div class="flex space-x-6">
+                    <a href="#" class="text-gray-500 hover:text-primary transition-colors"><i class="fa fa-privacy"></i> 隐私政策</a>
+                    <a href="#" class="text-gray-500 hover:text-primary transition-colors"><i class="fa fa-terms"></i> 使用条款</a>
+                    <a href="#" class="text-gray-500 hover:text-primary transition-colors"><i class="fa fa-contact"></i> 联系我们</a>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // 获取DOM元素
+            const uploadArea = document.getElementById('uploadArea');
+            const fileInput = document.getElementById('fileInput');
+            const fileList = document.getElementById('fileList');
+            const fileName = document.getElementById('fileName');
+            const fileInfo = document.getElementById('fileInfo');
+            const removeFile = document.getElementById('removeFile');
+            const audioPreview = document.getElementById('audioPreview');
+            const audioPlayer = document.getElementById('audioPlayer');
+            const convertBtn = document.getElementById('convertBtn');
+            const processingArea = document.getElementById('processingArea');
+            const progressBar = document.getElementById('progressBar');
+            const progressText = document.getElementById('progressText');
+            const resultArea = document.getElementById('resultArea');
+            const resultFileName = document.getElementById('resultFileName');
+            const resultFileInfo = document.getElementById('resultFileInfo');
+            const downloadBtn = document.getElementById('downloadBtn');
+            const outputFormat = document.getElementById('outputFormat');
+            const quality = document.getElementById('quality');
+            const bitrate = document.getElementById('bitrate');
+            
+            let selectedFile = null;
+            
+            // 格式化文件大小
+            function formatFileSize(bytes) {
+                if (bytes === 0) return '0 Bytes';
+                const k = 1024;
+                const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+                const i = Math.floor(Math.log(bytes) / Math.log(k));
+                return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+            }
+            
+            // 处理文件选择
+            function handleFileSelection(file) {
+                if (!file) return;
+                
+                // 检查是否是音频文件
+                if (!file.type.startsWith('audio/')) {
+                    alert('请选择音频文件！');
+                    return;
+                }
+                
+                selectedFile = file;
+                
+                // 显示文件信息
+                fileName.textContent = file.name;
+                fileInfo.textContent = `${formatFileSize(file.size)} · ${file.type}`;
+                fileList.classList.remove('hidden');
+                
+                // 显示音频预览
+                const objectUrl = URL.createObjectURL(file);
+                audioPlayer.src = objectUrl;
+                audioPreview.classList.remove('hidden');
+                
+                // 启用转换按钮
+                convertBtn.disabled = false;
+            }
+            
+            // 上传区域点击事件
+            uploadArea.addEventListener('click', function() {
+                fileInput.click();
+            });
+            
+            // 文件选择事件
+            fileInput.addEventListener('change', function() {
+                if (this.files.length > 0) {
+                    handleFileSelection(this.files[0]);
+                }
+            });
+            
+            // 拖放功能
+            uploadArea.addEventListener('dragover', function(e) {
+                e.preventDefault();
+                uploadArea.classList.add('active');
+            });
+            
+            uploadArea.addEventListener('dragleave', function() {
+                uploadArea.classList.remove('active');
+            });
+            
+            uploadArea.addEventListener('drop', function(e) {
+                e.preventDefault();
+                uploadArea.classList.remove('active');
+                
+                if (e.dataTransfer.files.length > 0) {
+                    handleFileSelection(e.dataTransfer.files[0]);
+                }
+            });
+            
+            // 移除文件
+            removeFile.addEventListener('click', function() {
+                selectedFile = null;
+                fileInput.value = '';
+                fileList.classList.add('hidden');
+                audioPreview.classList.add('hidden');
+                audioPlayer.src = '';
+                convertBtn.disabled = true;
+                
+                // 重置处理状态
+                processingArea.classList.add('hidden');
+                resultArea.classList.add('hidden');
+            });
+            
+            // 开始转换
+            convertBtn.addEventListener('click', function() {
+                if (!selectedFile) return;
+                
+                // 隐藏其他区域，显示处理区域
+                fileList.classList.add('hidden');
+                resultArea.classList.add('hidden');
+                processingArea.classList.remove('hidden');
+                progressBar.style.width = '0%';
+                progressText.textContent = '开始处理文件...';
+                
+                // 模拟处理进度
+                let progress = 0;
+                const interval = setInterval(function() {
+                    progress += Math.random() * 5;
+                    if (progress >= 100) {
+                        progress = 100;
+                        clearInterval(interval);
+                        
+                        // 处理完成，显示结果
+                        setTimeout(function() {
+                            processingArea.classList.add('hidden');
+                            resultArea.classList.remove('hidden');
+                            
+                            // 生成结果文件名
+                            const originalName = selectedFile.name.replace(/\.[^/.]+$/, "");
+                            const resultName = `${originalName}.${outputFormat.value}`;
+                            resultFileName.textContent = resultName;
+                            
+                            // 计算估计的文件大小
+                            const qualityFactor = quality.value === 'low' ? 0.3 : 
+                                                quality.value === 'medium' ? 0.6 :
+                                                quality.value === 'high' ? 0.9 : 1.5;
+                            const estimatedSize = selectedFile.size * qualityFactor;
+                            
+                            resultFileInfo.textContent = `${formatFileSize(estimatedSize)} · ${outputFormat.value.toUpperCase()}`;
+                        }, 500);
+                    }
+                    
+                    // 更新进度
+                    progressBar.style.width = `${progress}%`;
+                    
+                    // 更新进度文本
+                    if (progress < 30) {
+                        progressText.textContent = '正在解析音频文件...';
+                    } else if (progress < 60) {
+                        progressText.textContent = '正在转换音频格式...';
+                    } else if (progress < 90) {
+                        progressText.textContent = '正在优化音频质量...';
+                    } else {
+                        progressText.textContent = '准备完成...';
+                    }
+                }, 300);
+            });
+            
+            // 下载文件
+            downloadBtn.addEventListener('click', function() {
+                // 在实际应用中，这里会下载处理后的文件
+                // 这里使用原始文件作为模拟
+                if (selectedFile) {
+                    const originalName = selectedFile.name.replace(/\.[^/.]+$/, "");
+                    const resultName = `${originalName}.${outputFormat.value}`;
+                    
+                    const a = document.createElement('a');
+                    a.href = URL.createObjectURL(selectedFile);
+                    a.download = resultName;
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                }
+            });
+            
+            // 质量选择影响比特率选项
+            quality.addEventListener('change', function() {
+                if (this.value === 'lossless') {
+                    bitrate.value = 'auto';
+                    bitrate.disabled = true;
+                } else {
+                    bitrate.disabled = false;
+                    
+                    // 根据质量自动选择合适的比特率
+                    if (this.value === 'low') {
+                        bitrate.value = '64';
+                    } else if (this.value === 'medium') {
+                        bitrate.value = '192';
+                    } else if (this.value === 'high') {
+                        bitrate.value = '320';
+                    }
+                }
+            });
+        });
+    </script>
+</body>
+</html>
+    

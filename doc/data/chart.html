@@ -1,0 +1,567 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>基础统计图表展示</title>
+  <!-- 引入Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- 引入Font Awesome -->
+  <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+  <!-- 引入Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.8/dist/chart.umd.min.js"></script>
+  
+  <!-- 配置Tailwind自定义颜色和字体 -->
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            primary: '#165DFF',
+            secondary: '#36CFC9',
+            accent: '#722ED1',
+            neutral: '#1F2937',
+            'neutral-light': '#F3F4F6',
+          },
+          fontFamily: {
+            inter: ['Inter', 'system-ui', 'sans-serif'],
+          },
+        },
+      }
+    }
+  </script>
+  
+  <style type="text/tailwindcss">
+    @layer utilities {
+      .content-auto {
+        content-visibility: auto;
+      }
+      .card-shadow {
+        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.05), 0 4px 6px -2px rgba(0, 0, 0, 0.03);
+      }
+      .card-hover {
+        transition: all 0.3s ease;
+      }
+      .card-hover:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+      }
+    }
+  </style>
+</head>
+
+<body class="font-inter bg-gray-50 text-neutral">
+  <!-- 顶部导航 -->
+  <header class="bg-white shadow-md fixed w-full top-0 z-50 transition-all duration-300">
+    <div class="container mx-auto px-4 py-4 flex justify-between items-center">
+      <div class="flex items-center space-x-2">
+        <i class="fa fa-bar-chart text-primary text-2xl"></i>
+        <h1 class="text-xl md:text-2xl font-bold text-primary">统计图表展示</h1>
+      </div>
+      <nav class="hidden md:flex space-x-6">
+        <a href="#bar-chart" class="hover:text-primary transition-colors">柱状图</a>
+        <a href="#line-chart" class="hover:text-primary transition-colors">折线图</a>
+        <a href="#pie-chart" class="hover:text-primary transition-colors">饼图</a>
+        <a href="#scatter-chart" class="hover:text-primary transition-colors">散点图</a>
+        <a href="#area-chart" class="hover:text-primary transition-colors">面积图</a>
+      </nav>
+      <button class="md:hidden text-neutral text-xl" id="menu-toggle">
+        <i class="fa fa-bars"></i>
+      </button>
+    </div>
+    <!-- 移动端菜单 -->
+    <div id="mobile-menu" class="hidden md:hidden bg-white border-t">
+      <div class="container mx-auto px-4 py-2 flex flex-col space-y-3">
+        <a href="#bar-chart" class="py-2 hover:text-primary transition-colors">柱状图</a>
+        <a href="#line-chart" class="py-2 hover:text-primary transition-colors">折线图</a>
+        <a href="#pie-chart" class="py-2 hover:text-primary transition-colors">饼图</a>
+        <a href="#scatter-chart" class="py-2 hover:text-primary transition-colors">散点图</a>
+        <a href="#area-chart" class="py-2 hover:text-primary transition-colors">面积图</a>
+      </div>
+    </div>
+  </header>
+
+  <!-- 主内容区 -->
+  <main class="container mx-auto px-4 pt-24 pb-16">
+    <!-- 介绍部分 -->
+    <section class="text-center mb-12">
+      <h2 class="text-[clamp(1.5rem,3vw,2.5rem)] font-bold mb-4">基础统计图表集合</h2>
+      <p class="text-gray-600 max-w-3xl mx-auto">
+        本页面展示了五种常用的统计图表：柱状图、折线图、饼图、散点图和面积图。
+        这些图表广泛应用于数据分析和可视化领域，点击图表可查看详细数据。
+      </p>
+    </section>
+
+    <!-- 图表展示区 -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+      <!-- 柱状图 -->
+      <section id="bar-chart" class="bg-white rounded-xl p-6 card-shadow card-hover">
+        <div class="flex justify-between items-center mb-4">
+          <h3 class="text-xl font-semibold flex items-center">
+            <i class="fa fa-bar-chart text-primary mr-2"></i>
+            柱状图
+          </h3>
+          <span class="text-sm text-gray-500">产品销量对比</span>
+        </div>
+        <div class="h-80">
+          <canvas id="barChart"></canvas>
+        </div>
+        <p class="mt-4 text-sm text-gray-500">
+          柱状图适合比较不同类别之间的数据差异，清晰展示各类别数值的高低。
+        </p>
+      </section>
+
+      <!-- 折线图 -->
+      <section id="line-chart" class="bg-white rounded-xl p-6 card-shadow card-hover">
+        <div class="flex justify-between items-center mb-4">
+          <h3 class="text-xl font-semibold flex items-center">
+            <i class="fa fa-line-chart text-secondary mr-2"></i>
+            折线图
+          </h3>
+          <span class="text-sm text-gray-500">月度销售额趋势</span>
+        </div>
+        <div class="h-80">
+          <canvas id="lineChart"></canvas>
+        </div>
+        <p class="mt-4 text-sm text-gray-500">
+          折线图适合展示数据随时间的变化趋势，能够清晰反映数据的上升、下降或波动情况。
+        </p>
+      </section>
+
+      <!-- 饼图 -->
+      <section id="pie-chart" class="bg-white rounded-xl p-6 card-shadow card-hover">
+        <div class="flex justify-between items-center mb-4">
+          <h3 class="text-xl font-semibold flex items-center">
+            <i class="fa fa-pie-chart text-accent mr-2"></i>
+            饼图
+          </h3>
+          <span class="text-sm text-gray-500">市场份额分布</span>
+        </div>
+        <div class="h-80 flex items-center justify-center">
+          <canvas id="pieChart"></canvas>
+        </div>
+        <p class="mt-4 text-sm text-gray-500">
+          饼图适合展示各部分占总体的比例关系，直观呈现数据的构成情况。
+        </p>
+      </section>
+
+      <!-- 散点图 -->
+      <section id="scatter-chart" class="bg-white rounded-xl p-6 card-shadow card-hover">
+        <div class="flex justify-between items-center mb-4">
+          <h3 class="text-xl font-semibold flex items-center">
+            <i class="fa fa-dot-circle-o text-orange-500 mr-2"></i>
+            散点图
+          </h3>
+          <span class="text-sm text-gray-500">身高体重关系</span>
+        </div>
+        <div class="h-80">
+          <canvas id="scatterChart"></canvas>
+        </div>
+        <p class="mt-4 text-sm text-gray-500">
+          散点图适合展示两个变量之间的相关性，能够发现数据的分布模式和异常值。
+        </p>
+      </section>
+
+      <!-- 面积图 -->
+      <section id="area-chart" class="bg-white rounded-xl p-6 card-shadow card-hover lg:col-span-2">
+        <div class="flex justify-between items-center mb-4">
+          <h3 class="text-xl font-semibold flex items-center">
+            <i class="fa fa-area-chart text-green-500 mr-2"></i>
+            面积图
+          </h3>
+          <span class="text-sm text-gray-500">用户增长趋势</span>
+        </div>
+        <div class="h-80">
+          <canvas id="areaChart"></canvas>
+        </div>
+        <p class="mt-4 text-sm text-gray-500">
+          面积图结合了折线图和柱状图的特点，既能展示趋势变化，又能通过面积直观反映数值大小。
+        </p>
+      </section>
+    </div>
+
+    <!-- 图表特点对比 -->
+    <section class="mt-16 bg-white rounded-xl p-6 card-shadow">
+      <h3 class="text-xl font-semibold mb-6 text-center">图表类型适用场景对比</h3>
+      <div class="overflow-x-auto">
+        <table class="min-w-full divide-y divide-gray-200">
+          <thead>
+            <tr>
+              <th class="px-6 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">图表类型</th>
+              <th class="px-6 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">主要用途</th>
+              <th class="px-6 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">优势</th>
+              <th class="px-6 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">局限性</th>
+            </tr>
+          </thead>
+          <tbody class="bg-white divide-y divide-gray-200">
+            <tr>
+              <td class="px-6 py-4 whitespace-nowrap">柱状图</td>
+              <td class="px-6 py-4">比较不同类别数据</td>
+              <td class="px-6 py-4">直观展示数值差异，易于比较</td>
+              <td class="px-6 py-4">不适合展示趋势变化</td>
+            </tr>
+            <tr>
+              <td class="px-6 py-4 whitespace-nowrap">折线图</td>
+              <td class="px-6 py-4">展示数据随时间变化趋势</td>
+              <td class="px-6 py-4">清晰反映趋势和变化率</td>
+              <td class="px-6 py-4">不适合比较多个类别</td>
+            </tr>
+            <tr>
+              <td class="px-6 py-4 whitespace-nowrap">饼图</td>
+              <td class="px-6 py-4">展示各部分占总体的比例</td>
+              <td class="px-6 py-4">直观呈现构成关系</td>
+              <td class="px-6 py-4">类别过多时可读性差</td>
+            </tr>
+            <tr>
+              <td class="px-6 py-4 whitespace-nowrap">散点图</td>
+              <td class="px-6 py-4">展示变量间的相关性</td>
+              <td class="px-6 py-4">发现数据分布模式和异常值</td>
+              <td class="px-6 py-4">不适合展示时间序列数据</td>
+            </tr>
+            <tr>
+              <td class="px-6 py-4 whitespace-nowrap">面积图</td>
+              <td class="px-6 py-4">展示趋势和累积值</td>
+              <td class="px-6 py-4">兼顾趋势展示和数值大小</td>
+              <td class="px-6 py-4">多组数据叠加时可能混淆</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <!-- 页脚 -->
+  <footer class="bg-neutral text-white py-8">
+    <div class="container mx-auto px-4">
+      <div class="flex flex-col md:flex-row justify-between items-center">
+        <div class="mb-4 md:mb-0">
+          <div class="flex items-center space-x-2">
+            <i class="fa fa-bar-chart text-primary text-xl"></i>
+            <span class="font-bold">统计图表展示</span>
+          </div>
+          <p class="text-sm text-gray-400 mt-2">数据可视化基础图表集合</p>
+        </div>
+        <div class="flex space-x-6">
+          <a href="#" class="hover:text-primary transition-colors"><i class="fa fa-github text-xl"></i></a>
+          <a href="#" class="hover:text-primary transition-colors"><i class="fa fa-twitter text-xl"></i></a>
+          <a href="#" class="hover:text-primary transition-colors"><i class="fa fa-linkedin text-xl"></i></a>
+        </div>
+      </div>
+      <div class="border-t border-gray-700 mt-6 pt-6 text-center text-sm text-gray-400">
+        &copy; 2023 统计图表展示 | 使用 Chart.js 和 Tailwind CSS 构建
+      </div>
+    </div>
+  </footer>
+
+  <!-- JavaScript -->
+  <script>
+    // 移动端菜单切换
+    document.getElementById('menu-toggle').addEventListener('click', function() {
+      const mobileMenu = document.getElementById('mobile-menu');
+      mobileMenu.classList.toggle('hidden');
+    });
+
+    // 滚动时导航栏样式变化
+    window.addEventListener('scroll', function() {
+      const header = document.querySelector('header');
+      if (window.scrollY > 10) {
+        header.classList.add('py-2');
+        header.classList.remove('py-4');
+      } else {
+        header.classList.add('py-4');
+        header.classList.remove('py-2');
+      }
+    });
+
+    // 图表初始化
+    document.addEventListener('DOMContentLoaded', function() {
+      // 通用图表配置
+      const commonOptions = {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: {
+            position: 'top',
+          },
+          tooltip: {
+            mode: 'index',
+            intersect: false,
+            backgroundColor: 'rgba(255, 255, 255, 0.9)',
+            titleColor: '#1F2937',
+            bodyColor: '#1F2937',
+            borderColor: '#E5E7EB',
+            borderWidth: 1,
+            padding: 12,
+            boxPadding: 6,
+            usePointStyle: true,
+            callbacks: {
+              label: function(context) {
+                return `${context.dataset.label}: ${context.raw}`;
+              }
+            }
+          }
+        },
+        interaction: {
+          mode: 'nearest',
+          axis: 'x',
+          intersect: false
+        },
+        animation: {
+          duration: 1000,
+          easing: 'easeOutQuart'
+        }
+      };
+
+      // 1. 柱状图
+      const barCtx = document.getElementById('barChart').getContext('2d');
+      new Chart(barCtx, {
+        type: 'bar',
+        data: {
+          labels: ['产品A', '产品B', '产品C', '产品D', '产品E', '产品F'],
+          datasets: [
+            {
+              label: '2022年销量',
+              data: [65, 59, 80, 81, 56, 55],
+              backgroundColor: 'rgba(22, 93, 255, 0.7)',
+              borderColor: 'rgba(22, 93, 255, 1)',
+              borderWidth: 1
+            },
+            {
+              label: '2023年销量',
+              data: [28, 48, 40, 19, 86, 27],
+              backgroundColor: 'rgba(54, 207, 201, 0.7)',
+              borderColor: 'rgba(54, 207, 201, 1)',
+              borderWidth: 1
+            }
+          ]
+        },
+        options: {
+          ...commonOptions,
+          scales: {
+            y: {
+              beginAtZero: true,
+              grid: {
+                drawBorder: false
+              }
+            },
+            x: {
+              grid: {
+                display: false
+              }
+            }
+          }
+        }
+      });
+
+      // 2. 折线图
+      const lineCtx = document.getElementById('lineChart').getContext('2d');
+      new Chart(lineCtx, {
+        type: 'line',
+        data: {
+          labels: ['1月', '2月', '3月', '4月', '5月', '6月', '7月', '8月', '9月'],
+          datasets: [
+            {
+              label: '销售额',
+              data: [12, 19, 13, 15, 20, 25, 22, 28, 30],
+              borderColor: 'rgba(54, 207, 201, 1)',
+              backgroundColor: 'rgba(54, 207, 201, 0.1)',
+              tension: 0.4,
+              fill: true,
+              pointBackgroundColor: 'rgba(54, 207, 201, 1)',
+              pointRadius: 4,
+              pointHoverRadius: 6
+            }
+          ]
+        },
+        options: {
+          ...commonOptions,
+          scales: {
+            y: {
+              beginAtZero: true,
+              grid: {
+                drawBorder: false
+              }
+            },
+            x: {
+              grid: {
+                display: false
+              }
+            }
+          }
+        }
+      });
+
+      // 3. 饼图
+      const pieCtx = document.getElementById('pieChart').getContext('2d');
+      new Chart(pieCtx, {
+        type: 'pie',
+        data: {
+          labels: ['公司A', '公司B', '公司C', '公司D', '其他'],
+          datasets: [
+            {
+              data: [35, 25, 20, 15, 5],
+              backgroundColor: [
+                'rgba(22, 93, 255, 0.8)',
+                'rgba(54, 207, 201, 0.8)',
+                'rgba(114, 46, 209, 0.8)',
+                'rgba(249, 115, 22, 0.8)',
+                'rgba(156, 163, 175, 0.8)'
+              ],
+              borderColor: [
+                'rgba(22, 93, 255, 1)',
+                'rgba(54, 207, 201, 1)',
+                'rgba(114, 46, 209, 1)',
+                'rgba(249, 115, 22, 1)',
+                'rgba(156, 163, 175, 1)'
+              ],
+              borderWidth: 1
+            }
+          ]
+        },
+        options: {
+          ...commonOptions,
+          plugins: {
+            ...commonOptions.plugins,
+            legend: {
+              position: 'right'
+            }
+          },
+          cutout: '0%', // 0% 是饼图，50% 是环形图
+        }
+      });
+
+      // 4. 散点图
+      const scatterCtx = document.getElementById('scatterChart').getContext('2d');
+      
+      // 生成随机数据点
+      function generateScatterData(count, minX, maxX, minY, maxY) {
+        return Array.from({length: count}, () => ({
+          x: Math.floor(Math.random() * (maxX - minX + 1)) + minX,
+          y: Math.floor(Math.random() * (maxY - minY + 1)) + minY
+        }));
+      }
+      
+      new Chart(scatterCtx, {
+        type: 'scatter',
+        data: {
+          datasets: [
+            {
+              label: '男性',
+              data: generateScatterData(30, 150, 190, 40, 90),
+              backgroundColor: 'rgba(22, 93, 255, 0.7)',
+              pointRadius: 6,
+              pointHoverRadius: 8
+            },
+            {
+              label: '女性',
+              data: generateScatterData(30, 140, 175, 35, 75),
+              backgroundColor: 'rgba(236, 72, 153, 0.7)',
+              pointRadius: 6,
+              pointHoverRadius: 8
+            }
+          ]
+        },
+        options: {
+          ...commonOptions,
+          scales: {
+            y: {
+              title: {
+                display: true,
+                text: '体重 (kg)'
+              },
+              min: 30,
+              max: 100,
+              grid: {
+                drawBorder: false
+              }
+            },
+            x: {
+              title: {
+                display: true,
+                text: '身高 (cm)'
+              },
+              min: 130,
+              max: 200,
+              grid: {
+                drawBorder: false
+              }
+            }
+          }
+        }
+      });
+
+      // 5. 面积图
+      const areaCtx = document.getElementById('areaChart').getContext('2d');
+      new Chart(areaCtx, {
+        type: 'line',
+        data: {
+          labels: ['2018', '2019', '2020', '2021', '2022', '2023', '2024'],
+          datasets: [
+            {
+              label: '网站用户',
+              data: [1200, 1900, 3000, 5000, 8000, 12000, 15000],
+              borderColor: 'rgba(22, 93, 255, 1)',
+              backgroundColor: 'rgba(22, 93, 255, 0.1)',
+              tension: 0.4,
+              fill: true,
+              pointBackgroundColor: 'rgba(22, 93, 255, 1)',
+              pointRadius: 4,
+              pointHoverRadius: 6
+            },
+            {
+              label: 'App用户',
+              data: [800, 1200, 2500, 4000, 7000, 10000, 14000],
+              borderColor: 'rgba(114, 46, 209, 1)',
+              backgroundColor: 'rgba(114, 46, 209, 0.1)',
+              tension: 0.4,
+              fill: true,
+              pointBackgroundColor: 'rgba(114, 46, 209, 1)',
+              pointRadius: 4,
+              pointHoverRadius: 6
+            }
+          ]
+        },
+        options: {
+          ...commonOptions,
+          scales: {
+            y: {
+              beginAtZero: true,
+              title: {
+                display: true,
+                text: '用户数量'
+              },
+              grid: {
+                drawBorder: false
+              }
+            },
+            x: {
+              grid: {
+                display: false
+              }
+            }
+          }
+        }
+      });
+    });
+
+    // 平滑滚动
+    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+      anchor.addEventListener('click', function (e) {
+        e.preventDefault();
+        const targetId = this.getAttribute('href');
+        const targetElement = document.querySelector(targetId);
+        
+        if (targetElement) {
+          window.scrollTo({
+            top: targetElement.offsetTop - 80,
+            behavior: 'smooth'
+          });
+          
+          // 关闭移动菜单
+          document.getElementById('mobile-menu').classList.add('hidden');
+        }
+      });
+    });
+  </script>
+</body>
+</html>

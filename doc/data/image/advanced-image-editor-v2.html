@@ -1,0 +1,2274 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>高级图片编辑工具</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.8/dist/chart.umd.min.js"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#165DFF',
+                        secondary: '#722ED1',
+                        accent: '#FF7D00',
+                        dark: '#1D2129',
+                        light: '#F2F3F5'
+                    },
+                    fontFamily: {
+                        inter: ['Inter', 'system-ui', 'sans-serif'],
+                    },
+                }
+            }
+        }
+    </script>
+    <style type="text/tailwindcss">
+        @layer utilities {
+            .content-auto {
+                content-visibility: auto;
+            }
+            .tool-btn {
+                @apply flex items-center gap-2 p-3 rounded-lg transition-all duration-300 hover:bg-primary/10 text-dark;
+            }
+            .tool-btn-active {
+                @apply bg-primary/10 text-primary border-l-4 border-primary;
+            }
+            .control-panel {
+                @apply bg-white rounded-xl shadow-sm p-4 transition-all duration-300;
+            }
+            .slider-control {
+                @apply w-full h-2 bg-gray-200 rounded-full appearance-none cursor-pointer;
+            }
+            .slider-control::-webkit-slider-thumb {
+                @apply appearance-none w-5 h-5 rounded-full bg-primary cursor-pointer transition-transform hover:scale-125;
+            }
+            .zoom-btn {
+                @apply w-8 h-8 flex items-center justify-center rounded-full bg-white/80 backdrop-blur-sm shadow-md hover:bg-white transition-all text-dark;
+            }
+            .canvas-container {
+                @apply relative bg-gray-100 rounded-xl overflow-hidden flex items-center justify-center;
+            }
+            .brush-size-indicator {
+                @apply absolute rounded-full bg-primary/30 border-2 border-primary;
+            }
+            .crop-handle {
+                @apply absolute w-4 h-4 bg-white border-2 border-primary rounded-full -translate-x-1/2 -translate-y-1/2 shadow-md z-10;
+            }
+            .crop-overlay {
+                @apply absolute inset-0 bg-black/50 z-0;
+            }
+            .crop-selection {
+                @apply absolute border-2 border-primary bg-transparent z-10;
+            }
+            .perspective-handle {
+                @apply absolute w-5 h-5 bg-primary text-white rounded-full flex items-center justify-center text-xs z-20;
+            }
+            .transform-grid {
+                @apply absolute border border-dashed border-gray-400/50 z-10;
+            }
+        }
+    </style>
+</head>
+<body class="font-inter bg-gray-50 min-h-screen flex flex-col text-dark overflow-x-hidden">
+    <!-- 顶部导航 -->
+    <header class="bg-white border-b border-gray-200 sticky top-0 z-30">
+        <div class="container mx-auto px-4">
+            <div class="flex items-center justify-between h-16">
+                <div class="flex items-center gap-2">
+                    <i class="fa fa-paint-brush text-primary text-2xl"></i>
+                    <h1 class="text-xl font-bold">PhotoEnhance <span class="text-primary">Pro</span></h1>
+                </div>
+                
+                <div class="flex items-center gap-4">
+                    <button id="undo-btn" class="flex items-center gap-1 px-3 py-2 rounded-lg bg-gray-100 hover:bg-gray-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed" disabled>
+                        <i class="fa fa-undo"></i>
+                        <span class="hidden sm:inline">撤销</span>
+                    </button>
+                    
+                    <button id="redo-btn" class="flex items-center gap-1 px-3 py-2 rounded-lg bg-gray-100 hover:bg-gray-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed" disabled>
+                        <i class="fa fa-repeat"></i>
+                        <span class="hidden sm:inline">重做</span>
+                    </button>
+                    
+                    <div class="h-6 w-px bg-gray-300"></div>
+                    
+                    <label for="import-image" class="flex items-center gap-1 px-3 py-2 rounded-lg bg-primary text-white hover:bg-primary/90 transition-colors cursor-pointer">
+                        <i class="fa fa-upload"></i>
+                        <span class="hidden sm:inline">导入图片</span>
+                    </label>
+                    <input type="file" id="import-image" accept="image/*" class="hidden">
+                    
+                    <button id="export-image" class="flex items-center gap-1 px-3 py-2 rounded-lg bg-accent text-white hover:bg-accent/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed" disabled>
+                        <i class="fa fa-download"></i>
+                        <span class="hidden sm:inline">导出图片</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- 主内容区 -->
+    <main class="flex-grow container mx-auto px-4 py-6">
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+            <!-- 左侧工具栏 -->
+            <div class="lg:col-span-1 space-y-2">
+                <!-- 新增的变换工具组 -->
+                <div class="p-2 text-xs text-gray-500 uppercase">变换工具</div>
+                <button class="tool-btn w-full justify-start" data-tool="crop">
+                    <i class="fa fa-crop"></i>
+                    <span class="hidden sm:inline">裁剪</span>
+                </button>
+                <button class="tool-btn w-full justify-start" data-tool="rotate">
+                    <i class="fa fa-rotate-right"></i>
+                    <span class="hidden sm:inline">旋转</span>
+                </button>
+                <button class="tool-btn w-full justify-start" data-tool="resize">
+                    <i class="fa fa-arrows-alt"></i>
+                    <span class="hidden sm:inline">调整尺寸</span>
+                </button>
+                <button class="tool-btn w-full justify-start" data-tool="flip">
+                    <i class="fa fa-exchange"></i>
+                    <span class="hidden sm:inline">翻转</span>
+                </button>
+                <button class="tool-btn w-full justify-start" data-tool="perspective">
+                    <i class="fa fa-cube"></i>
+                    <span class="hidden sm:inline">透视</span>
+                </button>
+                <button class="tool-btn w-full justify-start" data-tool="distort">
+                    <i class="fa fa-share-alt"></i>
+                    <span class="hidden sm:inline">扭曲</span>
+                </button>
+                <button class="tool-btn w-full justify-start" data-tool="stitch">
+                    <i class="fa fa-th-large"></i>
+                    <span class="hidden sm:inline">全景拼接</span>
+                </button>
+                
+                <div class="h-px bg-gray-200 my-2"></div>
+                
+                <!-- 原有工具组 -->
+                <div class="p-2 text-xs text-gray-500 uppercase">增强工具</div>
+                <button class="tool-btn tool-btn-active w-full justify-start" data-tool="denoise">
+                    <i class="fa fa-magic"></i>
+                    <span class="hidden sm:inline">去噪</span>
+                </button>
+                
+                <button class="tool-btn w-full justify-start" data-tool="sharpness">
+                    <i class="fa fa-search-plus"></i>
+                    <span class="hidden sm:inline">锐化/模糊</span>
+                </button>
+                
+                <button class="tool-btn w-full justify-start" data-tool="redeye">
+                    <i class="fa fa-eye"></i>
+                    <span class="hidden sm:inline">红眼去除</span>
+                </button>
+                
+                <button class="tool-btn w-full justify-start" data-tool="repair">
+                    <i class="fa fa-wrench"></i>
+                    <span class="hidden sm:inline">修复瑕疵</span>
+                </button>
+                
+                <button class="tool-btn w-full justify-start" data-tool="watermark">
+                    <i class="fa fa-ban"></i>
+                    <span class="hidden sm:inline">去水印</span>
+                </button>
+                
+                <button class="tool-btn w-full justify-start" data-tool="superres">
+                    <i class="fa fa-expand"></i>
+                    <span class="hidden sm:inline">超分辨率</span>
+                </button>
+                
+                <div class="h-px bg-gray-200 my-2"></div>
+                
+                <button class="tool-btn w-full justify-start" data-tool="compare">
+                    <i class="fa fa-exchange"></i>
+                    <span class="hidden sm:inline">对比</span>
+                </button>
+                
+                <button class="tool-btn w-full justify-start" data-tool="presets">
+                    <i class="fa fa-th-large"></i>
+                    <span class="hidden sm:inline">预设</span>
+                </button>
+            </div>
+            
+            <!-- 中间预览区 -->
+            <div class="lg:col-span-8">
+                <div class="control-panel h-full flex flex-col">
+                    <div class="flex justify-between items-center mb-4">
+                        <h2 class="text-lg font-semibold">预览</h2>
+                        <div class="flex items-center gap-2">
+                            <button class="zoom-btn" id="zoom-out">
+                                <i class="fa fa-search-minus"></i>
+                            </button>
+                            <span id="zoom-level" class="text-sm w-8 text-center">100%</span>
+                            <button class="zoom-btn" id="zoom-in">
+                                <i class="fa fa-search-plus"></i>
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div class="canvas-container flex-grow min-h-[400px] relative" id="preview-canvas">
+                        <!-- 初始状态 -->
+                        <div id="initial-state" class="text-center p-8 max-w-md">
+                            <i class="fa fa-image text-5xl text-gray-300 mb-4"></i>
+                            <h3 class="text-lg font-medium mb-2">导入图片开始编辑</h3>
+                            <p class="text-gray-500 text-sm">支持 JPG、PNG、TIFF 等常见格式</p>
+                            <label for="initial-import" class="mt-4 inline-block px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors cursor-pointer">
+                                <i class="fa fa-upload mr-1"></i> 选择图片
+                            </label>
+                            <input type="file" id="initial-import" accept="image/*" class="hidden">
+                        </div>
+                        
+                        <!-- 图片编辑区域 -->
+                        <div id="image-editor" class="hidden absolute inset-0 overflow-hidden">
+                            <img id="original-image" class="hidden absolute top-0 left-0" alt="原始图片">
+                            <canvas id="edit-canvas" class="absolute top-0 left-0"></canvas>
+                            
+                            <!-- 裁剪工具元素 -->
+                            <div id="crop-overlay" class="crop-overlay hidden"></div>
+                            <div id="crop-selection" class="crop-selection hidden"></div>
+                            <div id="crop-handle-tl" class="crop-handle hidden" data-handle="tl"></div>
+                            <div id="crop-handle-tr" class="crop-handle hidden" data-handle="tr"></div>
+                            <div id="crop-handle-bl" class="crop-handle hidden" data-handle="bl"></div>
+                            <div id="crop-handle-br" class="crop-handle hidden" data-handle="br"></div>
+                            
+                            <!-- 透视校正控制点 -->
+                            <div id="perspective-handle-tl" class="perspective-handle hidden" data-handle="tl">1</div>
+                            <div id="perspective-handle-tr" class="perspective-handle hidden" data-handle="tr">2</div>
+                            <div id="perspective-handle-bl" class="perspective-handle hidden" data-handle="bl">3</div>
+                            <div id="perspective-handle-br" class="perspective-handle hidden" data-handle="br">4</div>
+                            
+                            <!-- 扭曲变形网格 -->
+                            <div id="transform-grid" class="transform-grid hidden"></div>
+                            
+                            <!-- 对比视图指示器 -->
+                            <div id="compare-divider" class="hidden absolute top-0 bottom-0 w-1 bg-white cursor-ew-resize">
+                                <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-white border-2 border-gray-300 shadow-md"></div>
+                            </div>
+                        </div>
+                        
+                        <!-- 全景拼接区域 -->
+                        <div id="stitch-editor" class="hidden absolute inset-0 p-4">
+                            <div class="text-center mb-4">
+                                <h3 class="text-base font-medium">添加图片进行全景拼接</h3>
+                                <p class="text-sm text-gray-500">导入多张重叠的图片以创建全景效果</p>
+                            </div>
+                            <div id="stitch-preview" class="border-2 border-dashed border-gray-300 rounded-lg min-h-[200px] flex items-center justify-center bg-gray-50">
+                                <label for="stitch-import" class="text-center px-6 py-3 bg-primary/10 text-primary rounded-lg hover:bg-primary/20 transition-colors cursor-pointer">
+                                    <i class="fa fa-plus-circle text-xl block mb-2"></i>
+                                    <span>添加图片</span>
+                                </label>
+                                <input type="file" id="stitch-import" accept="image/*" multiple class="hidden">
+                            </div>
+                            <div id="stitch-images" class="mt-4 flex gap-2 overflow-x-auto pb-2"></div>
+                        </div>
+                        
+                        <!-- 加载状态 -->
+                        <div id="loading-indicator" class="hidden absolute inset-0 bg-black/5 flex items-center justify-center">
+                            <div class="bg-white p-4 rounded-lg shadow-lg flex items-center gap-3">
+                                <i class="fa fa-circle-o-notch fa-spin text-xl text-primary"></i>
+                                <span>处理中...</span>
+                            </div>
+                        </div>
+                        
+                        <!-- 修复工具指示器 -->
+                        <div id="repair-indicator" class="brush-size-indicator hidden" style="width: 20px; height: 20px;"></div>
+                    </div>
+                    
+                    <div class="mt-4 flex justify-between items-center text-sm text-gray-500">
+                        <div id="image-dimensions">- x - 像素</div>
+                        <div class="flex items-center gap-3">
+                            <button id="fit-to-screen" class="flex items-center gap-1 hover:text-primary transition-colors">
+                                <i class="fa fa-expand"></i>
+                                <span>适应屏幕</span>
+                            </button>
+                            <button id="reset-view" class="flex items-center gap-1 hover:text-primary transition-colors">
+                                <i class="fa fa-refresh"></i>
+                                <span>重置视图</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 右侧控制面板 -->
+            <div class="lg:col-span-3 space-y-4">
+                <!-- 裁剪控制 -->
+                <div class="tool-controls control-panel hidden" data-for="crop">
+                    <h3 class="text-base font-semibold mb-4">裁剪设置</h3>
+                    
+                    <p class="text-sm text-gray-600 mb-4">拖动边角调整裁剪区域，双击确认裁剪</p>
+                    
+                    <div class="mb-4">
+                        <label class="text-sm font-medium mb-2 block">裁剪比例</label>
+                        <div class="grid grid-cols-4 gap-2">
+                            <button class="py-2 text-sm bg-primary text-white rounded-lg">自由</button>
+                            <button class="py-2 text-sm bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors">1:1</button>
+                            <button class="py-2 text-sm bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors">4:3</button>
+                            <button class="py-2 text-sm bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors">16:9</button>
+                            <button class="py-2 text-sm bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors">3:2</button>
+                            <button class="py-2 text-sm bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors">5:4</button>
+                            <button class="py-2 text-sm bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors">2:3</button>
+                            <button class="py-2 text-sm bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors">自定义</button>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-4">
+                        <label class="flex items-center gap-2">
+                            <input type="checkbox" class="rounded text-primary" checked id="crop-constrain">
+                            <span class="text-sm">保持比例</span>
+                        </label>
+                    </div>
+                    
+                    <div class="flex gap-2">
+                        <button class="flex-1 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors" id="reset-crop">
+                            重置
+                        </button>
+                        <button class="flex-1 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors" id="apply-crop">
+                            应用裁剪
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- 旋转控制 -->
+                <div class="tool-controls control-panel hidden" data-for="rotate">
+                    <h3 class="text-base font-semibold mb-4">旋转设置</h3>
+                    
+                    <div class="mb-4">
+                        <div class="flex justify-between mb-1">
+                            <label class="text-sm">旋转角度</label>
+                            <span class="text-sm text-primary" id="rotate-value">0°</span>
+                        </div>
+                        <input type="range" min="0" max="359" value="0" class="slider-control" id="rotate-slider">
+                    </div>
+                    
+                    <div class="mb-4">
+                        <label class="text-sm font-medium mb-2 block">快速旋转</label>
+                        <div class="grid grid-cols-2 gap-2">
+                            <button class="py-2 text-sm bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors flex items-center justify-center gap-1" id="rotate-90">
+                                <i class="fa fa-rotate-right"></i> 90°
+                            </button>
+                            <button class="py-2 text-sm bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors flex items-center justify-center gap-1" id="rotate-180">
+                                <i class="fa fa-rotate-right"></i> 180°
+                            </button>
+                            <button class="py-2 text-sm bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors flex items-center justify-center gap-1" id="rotate-270">
+                                <i class="fa fa-rotate-left"></i> 90°
+                            </button>
+                            <button class="py-2 text-sm bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors flex items-center justify-center gap-1" id="rotate-reset">
+                                <i class="fa fa-refresh"></i> 重置
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-4">
+                        <label class="flex items-center gap-2">
+                            <input type="checkbox" class="rounded text-primary" checked id="rotate-fill">
+                            <span class="text-sm">填充背景</span>
+                        </label>
+                        
+                        <div class="mt-2 pl-6">
+                            <label class="text-xs text-gray-500 block mb-1">背景颜色</label>
+                            <div class="grid grid-cols-5 gap-1">
+                                <button class="w-full aspect-square rounded-full bg-white border border-gray-300 focus:ring-2 focus:ring-primary"></button>
+                                <button class="w-full aspect-square rounded-full bg-black border border-gray-300 focus:ring-2 focus:ring-primary"></button>
+                                <button class="w-full aspect-square rounded-full bg-gray-200 border border-gray-300 focus:ring-2 focus:ring-primary"></button>
+                                <button class="w-full aspect-square rounded-full bg-blue-100 border border-gray-300 focus:ring-2 focus:ring-primary"></button>
+                                <button class="w-full aspect-square rounded-full bg-transparent border border-dashed border-gray-300 focus:ring-2 focus:ring-primary flex items-center justify-center text-xs">透明</button>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <button class="w-full py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors" id="apply-rotate">
+                        应用旋转
+                    </button>
+                </div>
+                
+                <!-- 调整尺寸控制 -->
+                <div class="tool-controls control-panel hidden" data-for="resize">
+                    <h3 class="text-base font-semibold mb-4">调整尺寸</h3>
+                    
+                    <div class="mb-4">
+                        <div class="flex justify-between gap-2">
+                            <div class="flex-1">
+                                <label class="text-sm block mb-1">宽度 (像素)</label>
+                                <input type="number" id="resize-width" class="w-full p-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/50">
+                            </div>
+                            <div class="flex-1">
+                                <label class="text-sm block mb-1">高度 (像素)</label>
+                                <input type="number" id="resize-height" class="w-full p-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/50">
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-4">
+                        <label class="flex items-center gap-2 mb-2">
+                            <input type="checkbox" class="rounded text-primary" checked id="resize-constrain">
+                            <span class="text-sm">保持比例</span>
+                        </label>
+                        
+                        <label class="text-sm font-medium mb-2 block">缩放方式</label>
+                        <select class="w-full p-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/50">
+                            <option>双立方 (最佳质量)</option>
+                            <option>双线性</option>
+                            <option>最近邻 (最快)</option>
+                        </select>
+                    </div>
+                    
+                    <div class="mb-4">
+                        <label class="text-sm font-medium mb-2 block">快速缩放</label>
+                        <div class="grid grid-cols-3 gap-2">
+                            <button class="py-2 text-sm bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors" data-scale="50">50%</button>
+                            <button class="py-2 text-sm bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors" data-scale="75">75%</button>
+                            <button class="py-2 text-sm bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors" data-scale="100">100%</button>
+                            <button class="py-2 text-sm bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors" data-scale="125">125%</button>
+                            <button class="py-2 text-sm bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors" data-scale="150">150%</button>
+                            <button class="py-2 text-sm bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors" data-scale="200">200%</button>
+                        </div>
+                    </div>
+                    
+                    <button class="w-full py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors" id="apply-resize">
+                        应用尺寸调整
+                    </button>
+                </div>
+                
+                <!-- 翻转控制 -->
+                <div class="tool-controls control-panel hidden" data-for="flip">
+                    <h3 class="text-base font-semibold mb-4">翻转/镜像</h3>
+                    
+                    <p class="text-sm text-gray-600 mb-4">水平或垂直翻转图片</p>
+                    
+                    <div class="mb-6">
+                        <div class="grid grid-cols-2 gap-4">
+                            <button class="py-4 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors flex flex-col items-center justify-center gap-2" id="flip-horizontal">
+                                <i class="fa fa-arrows-h text-xl"></i>
+                                <span class="text-sm">水平翻转</span>
+                            </button>
+                            <button class="py-4 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors flex flex-col items-center justify-center gap-2" id="flip-vertical">
+                                <i class="fa fa-arrows-v text-xl"></i>
+                                <span class="text-sm">垂直翻转</span>
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-4">
+                        <label class="text-sm font-medium mb-2 block">预览方式</label>
+                        <div class="grid grid-cols-2 gap-2">
+                            <button class="py-2 text-sm bg-primary text-white rounded-lg">对比视图</button>
+                            <button class="py-2 text-sm bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors">直接预览</button>
+                        </div>
+                    </div>
+                    
+                    <div class="flex gap-2">
+                        <button class="flex-1 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors" id="reset-flip">
+                            重置
+                        </button>
+                        <button class="flex-1 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors" id="apply-flip">
+                            应用
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- 透视校正控制 -->
+                <div class="tool-controls control-panel hidden" data-for="perspective">
+                    <h3 class="text-base font-semibold mb-4">透视校正</h3>
+                    
+                    <p class="text-sm text-gray-600 mb-4">拖动四个角点调整透视，或使用预设</p>
+                    
+                    <div class="mb-4">
+                        <label class="text-sm font-medium mb-2 block">预设</label>
+                        <div class="grid grid-cols-2 gap-2">
+                            <button class="py-2 text-sm bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors">建筑校正</button>
+                            <button class="py-2 text-sm bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors">地面校正</button>
+                            <button class="py-2 text-sm bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors">倾斜校正</button>
+                            <button class="py-2 text-sm bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors">自动校正</button>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-4">
+                        <label class="text-sm font-medium mb-2 block">校正模式</label>
+                        <select class="w-full p-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/50">
+                            <option>四点透视</option>
+                            <option>两点透视</option>
+                            <option>水平透视</option>
+                            <option>垂直透视</option>
+                        </select>
+                    </div>
+                    
+                    <div class="flex gap-2">
+                        <button class="flex-1 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors" id="reset-perspective">
+                            重置
+                        </button>
+                        <button class="flex-1 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors" id="apply-perspective">
+                            应用校正
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- 扭曲变形控制 -->
+                <div class="tool-controls control-panel hidden" data-for="distort">
+                    <h3 class="text-base font-semibold mb-4">扭曲/变形</h3>
+                    
+                    <p class="text-sm text-gray-600 mb-4">拖动网格点进行变形调整</p>
+                    
+                    <div class="mb-4">
+                        <label class="text-sm font-medium mb-2 block">变形工具</label>
+                        <div class="grid grid-cols-3 gap-2">
+                            <button class="py-2 text-sm bg-primary text-white rounded-lg">网格变形</button>
+                            <button class="py-2 text-sm bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors">液化</button>
+                            <button class="py-2 text-sm bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors">弯曲</button>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-4">
+                        <label class="text-sm font-medium mb-2 block">网格密度</label>
+                        <div class="grid grid-cols-4 gap-2">
+                            <button class="py-2 text-sm bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors">低</button>
+                            <button class="py-2 text-sm bg-primary text-white rounded-lg">中</button>
+                            <button class="py-2 text-sm bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors">高</button>
+                            <button class="py-2 text-sm bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors">自定义</button>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-4">
+                        <div class="flex justify-between mb-1">
+                            <label class="text-sm">强度</label>
+                            <span class="text-sm text-primary">50%</span>
+                        </div>
+                        <input type="range" min="0" max="100" value="50" class="slider-control">
+                    </div>
+                    
+                    <div class="flex gap-2">
+                        <button class="flex-1 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors" id="reset-distort">
+                            重置
+                        </button>
+                        <button class="flex-1 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors" id="apply-distort">
+                            应用变形
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- 全景拼接控制 -->
+                <div class="tool-controls control-panel hidden" data-for="stitch">
+                    <h3 class="text-base font-semibold mb-4">全景拼接</h3>
+                    
+                    <p class="text-sm text-gray-600 mb-4">将多张图片拼接成全景照片</p>
+                    
+                    <div class="mb-4">
+                        <label class="text-sm font-medium mb-2 block">拼接方式</label>
+                        <div class="grid grid-cols-1 gap-2">
+                            <button class="py-2 text-sm bg-primary text-white rounded-lg flex items-center justify-center gap-2">
+                                <i class="fa fa-arrows-h"></i> 水平全景
+                            </button>
+                            <button class="py-2 text-sm bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors flex items-center justify-center gap-2">
+                                <i class="fa fa-arrows-v"></i> 垂直全景
+                            </button>
+                            <button class="py-2 text-sm bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors flex items-center justify-center gap-2">
+                                <i class="fa fa-th-large"></i> 360°全景
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-4">
+                        <label class="text-sm font-medium mb-2 block">拼接选项</label>
+                        <label class="flex items-center gap-2 mb-2">
+                            <input type="checkbox" class="rounded text-primary" checked>
+                            <span class="text-sm">自动对齐</span>
+                        </label>
+                        <label class="flex items-center gap-2 mb-2">
+                            <input type="checkbox" class="rounded text-primary" checked>
+                            <span class="text-sm">自动曝光平衡</span>
+                        </label>
+                        <label class="flex items-center gap-2">
+                            <input type="checkbox" class="rounded text-primary" checked>
+                            <span class="text-sm">内容感知填充边缘</span>
+                        </label>
+                    </div>
+                    
+                    <div class="p-3 bg-blue-50 rounded-lg border border-blue-100 mb-4">
+                        <div class="flex items-start gap-2">
+                            <i class="fa fa-info-circle text-primary mt-0.5"></i>
+                            <p class="text-xs text-gray-600">全景拼接需要导入多张重叠的图片，建议使用三脚架拍摄以获得最佳效果。</p>
+                        </div>
+                    </div>
+                    
+                    <button class="w-full py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors" id="apply-stitch">
+                        开始拼接
+                    </button>
+                </div>
+                
+                <!-- 去噪控制 (原有) -->
+                <div class="tool-controls control-panel" data-for="denoise">
+                    <h3 class="text-base font-semibold mb-4">去噪设置</h3>
+                    
+                    <div class="mb-4">
+                        <div class="flex justify-between mb-1">
+                            <label class="text-sm">降噪强度</label>
+                            <span class="text-sm text-primary" id="denoise-value">50%</span>
+                        </div>
+                        <input type="range" min="0" max="100" value="50" class="slider-control" id="denoise-slider">
+                        <p class="text-xs text-gray-500 mt-1">较高的值会去除更多噪点，但可能损失细节</p>
+                    </div>
+                    
+                    <div class="mb-4">
+                        <label class="text-sm font-medium mb-2 block">降噪类型</label>
+                        <div class="grid grid-cols-2 gap-2">
+                            <button class="px-3 py-2 text-sm bg-primary text-white rounded-lg">高斯去噪</button>
+                            <button class="px-3 py-2 text-sm bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors">均值滤波</button>
+                            <button class="px-3 py-2 text-sm bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors">中值滤波</button>
+                            <button class="px-3 py-2 text-sm bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors">双边滤波</button>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-4">
+                        <label class="flex items-center gap-2 mb-2">
+                            <input type="checkbox" class="rounded text-primary" checked>
+                            <span class="text-sm">保留边缘细节</span>
+                        </label>
+                        <label class="flex items-center gap-2">
+                            <input type="checkbox" class="rounded text-primary">
+                            <span class="text-sm">减少彩色噪点</span>
+                        </label>
+                    </div>
+                    
+                    <button class="w-full py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors" id="apply-denoise">
+                        应用去噪
+                    </button>
+                </div>
+                
+                <!-- 其他原有控制面板保持不变 -->
+                <div class="tool-controls control-panel hidden" data-for="sharpness">
+                    <h3 class="text-base font-semibold mb-4">锐化/模糊设置</h3>
+                    
+                    <div class="mb-4">
+                        <div class="flex justify-between mb-1">
+                            <label class="text-sm">强度</label>
+                            <span class="text-sm text-primary" id="sharpness-value">0%</span>
+                        </div>
+                        <input type="range" min="-100" max="100" value="0" class="slider-control" id="sharpness-slider">
+                        <div class="flex justify-between text-xs text-gray-500 mt-1">
+                            <span>模糊</span>
+                            <span>原图</span>
+                            <span>锐化</span>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-4">
+                        <label class="text-sm font-medium mb-2 block">算法选择</label>
+                        <select class="w-full p-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/50">
+                            <option>高斯模糊/锐化</option>
+                            <option>拉普拉斯锐化</option>
+                            <option>USM锐化</option>
+                            <option>运动模糊</option>
+                            <option>径向模糊</option>
+                        </select>
+                    </div>
+                    
+                    <div class="mb-4">
+                        <label class="text-sm">半径</label>
+                        <input type="range" min="0" max="20" value="1" class="slider-control mt-1">
+                    </div>
+                    
+                    <button class="w-full py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors">
+                        应用效果
+                    </button>
+                </div>
+                
+                <!-- 红眼去除控制 -->
+                <div class="tool-controls control-panel hidden" data-for="redeye">
+                    <h3 class="text-base font-semibold mb-4">红眼去除</h3>
+                    
+                    <p class="text-sm text-gray-600 mb-4">点击图片中的红眼区域进行修复</p>
+                    
+                    <div class="mb-4">
+                        <div class="flex justify-between mb-1">
+                            <label class="text-sm">修复范围</label>
+                            <span class="text-sm text-primary">50%</span>
+                        </div>
+                        <input type="range" min="10" max="100" value="50" class="slider-control">
+                    </div>
+                    
+                    <div class="mb-4">
+                        <label class="text-sm font-medium mb-2 block">瞳孔颜色</label>
+                        <div class="grid grid-cols-5 gap-2">
+                            <button class="w-full aspect-square rounded-full bg-black border-2 border-transparent ring-1 ring-gray-200 focus:border-primary focus:outline-none"></button>
+                            <button class="w-full aspect-square rounded-full bg-gray-700 border-2 border-transparent ring-1 ring-gray-200 focus:border-primary focus:outline-none"></button>
+                            <button class="w-full aspect-square rounded-full bg-gray-500 border-2 border-transparent ring-1 ring-gray-200 focus:border-primary focus:outline-none"></button>
+                            <button class="w-full aspect-square rounded-full bg-blue-900 border-2 border-transparent ring-1 ring-gray-200 focus:border-primary focus:outline-none"></button>
+                            <button class="w-full aspect-square rounded-full bg-green-900 border-2 border-transparent ring-1 ring-gray-200 focus:border-primary focus:outline-none"></button>
+                        </div>
+                    </div>
+                    
+                    <button class="w-full py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors">
+                        自动检测红眼
+                    </button>
+                </div>
+                
+                <!-- 其他工具面板保持不变 -->
+                <div class="tool-controls control-panel hidden" data-for="repair">
+                    <h3 class="text-base font-semibold mb-4">修复工具</h3>
+                    
+                    <p class="text-sm text-gray-600 mb-4">使用修复工具去除划痕、斑点和其他瑕疵</p>
+                    
+                    <div class="mb-4">
+                        <label class="text-sm font-medium mb-2 block">工具类型</label>
+                        <div class="grid grid-cols-3 gap-2">
+                            <button class="py-2 text-sm bg-primary text-white rounded-lg">修复</button>
+                            <button class="py-2 text-sm bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors">克隆</button>
+                            <button class="py-2 text-sm bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors">修补</button>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-4">
+                        <div class="flex justify-between mb-1">
+                            <label class="text-sm">画笔大小</label>
+                            <span class="text-sm text-primary" id="brush-size-value">20px</span>
+                        </div>
+                        <input type="range" min="1" max="100" value="20" class="slider-control" id="brush-size-slider">
+                    </div>
+                    
+                    <div class="mb-4">
+                        <div class="flex justify-between mb-1">
+                            <label class="text-sm">硬度</label>
+                            <span class="text-sm text-primary">50%</span>
+                        </div>
+                        <input type="range" min="0" max="100" value="50" class="slider-control">
+                    </div>
+                    
+                    <button class="w-full py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors">
+                        自动修复瑕疵
+                    </button>
+                </div>
+                
+                <div class="tool-controls control-panel hidden" data-for="watermark">
+                    <h3 class="text-base font-semibold mb-4">去水印</h3>
+                    
+                    <p class="text-sm text-gray-600 mb-4">选择水印区域进行去除</p>
+                    
+                    <div class="mb-4">
+                        <label class="text-sm font-medium mb-2 block">去除方法</label>
+                        <div class="grid grid-cols-1 gap-2">
+                            <button class="py-2 text-sm bg-primary text-white rounded-lg flex items-center justify-center gap-2">
+                                <i class="fa fa-magic"></i> 智能去除
+                            </button>
+                            <button class="py-2 text-sm bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors flex items-center justify-center gap-2">
+                                <i class="fa fa-square-o"></i> 选择区域
+                            </button>
+                            <button class="py-2 text-sm bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors flex items-center justify-center gap-2">
+                                <i class="fa fa-eraser"></i> 橡皮擦工具
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-4 p-3 bg-gray-50 rounded-lg border border-gray-200">
+                        <h4 class="text-sm font-medium mb-2">检测到的水印</h4>
+                        <p class="text-xs text-gray-500 mb-2">未检测到水印，请手动选择</p>
+                        <button class="text-xs text-primary hover:underline">手动标记水印区域</button>
+                    </div>
+                    
+                    <button class="w-full py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors">
+                        去除选中水印
+                    </button>
+                </div>
+                
+                <div class="tool-controls control-panel hidden" data-for="superres">
+                    <h3 class="text-base font-semibold mb-4">超分辨率重建</h3>
+                    
+                    <p class="text-sm text-gray-600 mb-4">提高图片分辨率和细节质量</p>
+                    
+                    <div class="mb-4">
+                        <label class="text-sm font-medium mb-2 block">放大倍数</label>
+                        <div class="grid grid-cols-4 gap-2">
+                            <button class="py-2 text-sm bg-primary text-white rounded-lg">2x</button>
+                            <button class="py-2 text-sm bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors">4x</button>
+                            <button class="py-2 text-sm bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors">8x</button>
+                            <button class="py-2 text-sm bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors">自定义</button>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-4">
+                        <label class="text-sm font-medium mb-2 block">重建模型</label>
+                        <select class="w-full p-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/50">
+                            <option>标准模型 (平衡速度和质量)</option>
+                            <option>高清模型 (更多细节)</option>
+                            <option>快速模型 (更快处理)</option>
+                            <option>人像优化 (针对人脸优化)</option>
+                            <option>风景优化 (针对自然风景)</option>
+                        </select>
+                    </div>
+                    
+                    <div class="p-3 bg-blue-50 rounded-lg border border-blue-100 mb-4">
+                        <div class="flex items-start gap-2">
+                            <i class="fa fa-info-circle text-primary mt-0.5"></i>
+                            <p class="text-xs text-gray-600">超分辨率处理可能需要较长时间，取决于图片大小和所选放大倍数。</p>
+                        </div>
+                    </div>
+                    
+                    <button class="w-full py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors">
+                        开始重建
+                    </button>
+                </div>
+                
+                <div class="tool-controls control-panel hidden" data-for="compare">
+                    <h3 class="text-base font-semibold mb-4">对比效果</h3>
+                    
+                    <p class="text-sm text-gray-600 mb-4">比较原图和编辑后的效果</p>
+                    
+                    <div class="mb-4">
+                        <label class="text-sm font-medium mb-2 block">对比方式</label>
+                        <div class="grid grid-cols-2 gap-2">
+                            <button class="py-2 text-sm bg-primary text-white rounded-lg">左右对比</button>
+                            <button class="py-2 text-sm bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors">上下对比</button>
+                            <button class="py-2 text-sm bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors">叠加对比</button>
+                            <button class="py-2 text-sm bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors">切换对比</button>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-4">
+                        <label class="flex items-center gap-2 mb-2">
+                            <input type="checkbox" class="rounded text-primary" checked>
+                            <span class="text-sm">显示差异高亮</span>
+                        </label>
+                        <label class="flex items-center gap-2">
+                            <input type="checkbox" class="rounded text-primary">
+                            <span class="text-sm">放大差异区域</span>
+                        </label>
+                    </div>
+                    
+                    <button class="w-full py-2 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors" id="close-compare">
+                        关闭对比
+                    </button>
+                </div>
+                
+                <div class="tool-controls control-panel hidden" data-for="presets">
+                    <h3 class="text-base font-semibold mb-4">推荐预设</h3>
+                    
+                    <p class="text-sm text-gray-600 mb-4">一键应用专业编辑效果</p>
+                    
+                    <div class="grid grid-cols-2 gap-3 mb-4">
+                        <div class="relative rounded-lg overflow-hidden cursor-pointer group">
+                            <img src="https://picsum.photos/150/100?random=10" alt="人像优化" class="w-full aspect-video object-cover">
+                            <div class="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent opacity-80 group-hover:opacity-100 transition-opacity"></div>
+                            <div class="absolute bottom-0 left-0 p-2 text-white">
+                                <p class="text-xs font-medium">人像优化</p>
+                            </div>
+                        </div>
+                        <div class="relative rounded-lg overflow-hidden cursor-pointer group">
+                            <img src="https://picsum.photos/150/100?random=11" alt="风景增强" class="w-full aspect-video object-cover">
+                            <div class="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent opacity-80 group-hover:opacity-100 transition-opacity"></div>
+                            <div class="absolute bottom-0 left-0 p-2 text-white">
+                                <p class="text-xs font-medium">风景增强</p>
+                            </div>
+                        </div>
+                        <div class="relative rounded-lg overflow-hidden cursor-pointer group">
+                            <img src="https://picsum.photos/150/100?random=12" alt="低光修复" class="w-full aspect-video object-cover">
+                            <div class="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent opacity-80 group-hover:opacity-100 transition-opacity"></div>
+                            <div class="absolute bottom-0 left-0 p-2 text-white">
+                                <p class="text-xs font-medium">低光修复</p>
+                            </div>
+                        </div>
+                        <div class="relative rounded-lg overflow-hidden cursor-pointer group">
+                            <img src="https://picsum.photos/150/100?random=13" alt="老照片修复" class="w-full aspect-video object-cover">
+                            <div class="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent opacity-80 group-hover:opacity-100 transition-opacity"></div>
+                            <div class="absolute bottom-0 left-0 p-2 text-white">
+                                <p class="text-xs font-medium">老照片修复</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <button class="w-full py-2 border border-dashed border-gray-300 text-gray-500 rounded-lg hover:bg-gray-50 transition-colors">
+                        <i class="fa fa-plus mr-1"></i> 保存当前设置为预设
+                    </button>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- 底部状态栏 -->
+    <footer class="bg-white border-t border-gray-200 py-3">
+        <div class="container mx-auto px-4">
+            <div class="flex flex-col sm:flex-row justify-between items-center gap-2 text-sm text-gray-500">
+                <div>
+                    <span id="edit-status">就绪</span>
+                    <span id="undo-count" class="hidden sm:inline ml-4">可撤销: 0 步</span>
+                </div>
+                <div class="flex items-center gap-4">
+                    <button class="hover:text-primary transition-colors" title="帮助">
+                        <i class="fa fa-question-circle"></i>
+                    </button>
+                    <button class="hover:text-primary transition-colors" title="教程">
+                        <i class="fa fa-play-circle"></i>
+                    </button>
+                    <button class="hover:text-primary transition-colors" title="设置">
+                        <i class="fa fa-cog"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <!-- 提示弹窗 -->
+    <div id="toast-notification" class="fixed bottom-4 right-4 bg-dark text-white px-4 py-2 rounded-lg shadow-lg transform translate-y-20 opacity-0 transition-all duration-300 flex items-center gap-2 z-50">
+        <i class="fa fa-info-circle"></i>
+        <span id="toast-message">操作成功</span>
+    </div>
+
+    <script>
+        // 全局状态管理 - 扩展原有状态
+        const state = {
+            currentTool: 'denoise',
+            imageLoaded: false,
+            originalImage: null,
+            workingCanvas: null,
+            context: null,
+            zoomLevel: 100,
+            panX: 0,
+            panY: 0,
+            isDragging: false,
+            lastX: 0,
+            lastY: 0,
+            editHistory: [],
+            historyIndex: -1,
+            brushSize: 20,
+            compareMode: false,
+            
+            // 新增变换相关状态
+            rotationAngle: 0,
+            flipHorizontal: false,
+            flipVertical: false,
+            cropSelection: { x: 0, y: 0, width: 0, height: 0 },
+            isCropping: false,
+            isResizingCrop: false,
+            currentCropHandle: null,
+            perspectivePoints: {
+                tl: { x: 0, y: 0 },
+                tr: { x: 0, y: 0 },
+                bl: { x: 0, y: 0 },
+                br: { x: 0, y: 0 }
+            },
+            isAdjustingPerspective: false,
+            currentPerspectiveHandle: null,
+            stitchImages: [],
+            transformMatrix: [1, 0, 0, 1, 0, 0] // 默认变换矩阵
+        };
+
+        // DOM 元素 - 扩展原有元素
+        const elements = {
+            // 原有元素保持不变
+            toolButtons: document.querySelectorAll('.tool-btn'),
+            toolControls: document.querySelectorAll('.tool-controls'),
+            importImage: document.getElementById('import-image'),
+            initialImport: document.getElementById('initial-import'),
+            exportImage: document.getElementById('export-image'),
+            initialState: document.getElementById('initial-state'),
+            imageEditor: document.getElementById('image-editor'),
+            originalImage: document.getElementById('original-image'),
+            editCanvas: document.getElementById('edit-canvas'),
+            previewCanvas: document.getElementById('preview-canvas'),
+            denoiseSlider: document.getElementById('denoise-slider'),
+            denoiseValue: document.getElementById('denoise-value'),
+            sharpnessSlider: document.getElementById('sharpness-slider'),
+            sharpnessValue: document.getElementById('sharpness-value'),
+            brushSizeSlider: document.getElementById('brush-size-slider'),
+            brushSizeValue: document.getElementById('brush-size-value'),
+            repairIndicator: document.getElementById('repair-indicator'),
+            zoomIn: document.getElementById('zoom-in'),
+            zoomOut: document.getElementById('zoom-out'),
+            zoomLevel: document.getElementById('zoom-level'),
+            fitToScreen: document.getElementById('fit-to-screen'),
+            resetView: document.getElementById('reset-view'),
+            imageDimensions: document.getElementById('image-dimensions'),
+            compareDivider: document.getElementById('compare-divider'),
+            compareButton: document.querySelector('[data-tool="compare"]'),
+            closeCompare: document.getElementById('close-compare'),
+            undoBtn: document.getElementById('undo-btn'),
+            redoBtn: document.getElementById('redo-btn'),
+            undoCount: document.getElementById('undo-count'),
+            editStatus: document.getElementById('edit-status'),
+            loadingIndicator: document.getElementById('loading-indicator'),
+            toastNotification: document.getElementById('toast-notification'),
+            toastMessage: document.getElementById('toast-message'),
+            
+            // 新增变换工具元素
+            // 裁剪工具
+            cropOverlay: document.getElementById('crop-overlay'),
+            cropSelection: document.getElementById('crop-selection'),
+            cropHandles: {
+                tl: document.getElementById('crop-handle-tl'),
+                tr: document.getElementById('crop-handle-tr'),
+                bl: document.getElementById('crop-handle-bl'),
+                br: document.getElementById('crop-handle-br')
+            },
+            resetCrop: document.getElementById('reset-crop'),
+            applyCrop: document.getElementById('apply-crop'),
+            cropConstrain: document.getElementById('crop-constrain'),
+            
+            // 旋转工具
+            rotateSlider: document.getElementById('rotate-slider'),
+            rotateValue: document.getElementById('rotate-value'),
+            rotate90: document.getElementById('rotate-90'),
+            rotate180: document.getElementById('rotate-180'),
+            rotate270: document.getElementById('rotate-270'),
+            rotateReset: document.getElementById('rotate-reset'),
+            applyRotate: document.getElementById('apply-rotate'),
+            rotateFill: document.getElementById('rotate-fill'),
+            
+            // 调整尺寸工具
+            resizeWidth: document.getElementById('resize-width'),
+            resizeHeight: document.getElementById('resize-height'),
+            resizeConstrain: document.getElementById('resize-constrain'),
+            applyResize: document.getElementById('apply-resize'),
+            scaleButtons: document.querySelectorAll('[data-scale]'),
+            
+            // 翻转工具
+            flipHorizontal: document.getElementById('flip-horizontal'),
+            flipVertical: document.getElementById('flip-vertical'),
+            resetFlip: document.getElementById('reset-flip'),
+            applyFlip: document.getElementById('apply-flip'),
+            
+            // 透视校正工具
+            perspectiveHandles: {
+                tl: document.getElementById('perspective-handle-tl'),
+                tr: document.getElementById('perspective-handle-tr'),
+                bl: document.getElementById('perspective-handle-bl'),
+                br: document.getElementById('perspective-handle-br')
+            },
+            resetPerspective: document.getElementById('reset-perspective'),
+            applyPerspective: document.getElementById('apply-perspective'),
+            
+            // 扭曲变形工具
+            transformGrid: document.getElementById('transform-grid'),
+            resetDistort: document.getElementById('reset-distort'),
+            applyDistort: document.getElementById('apply-distort'),
+            
+            // 全景拼接工具
+            stitchEditor: document.getElementById('stitch-editor'),
+            stitchImport: document.getElementById('stitch-import'),
+            stitchImages: document.getElementById('stitch-images'),
+            applyStitch: document.getElementById('apply-stitch')
+        };
+
+        // 初始化应用
+        function initApp() {
+            // 设置画布上下文
+            state.workingCanvas = elements.editCanvas;
+            state.context = state.workingCanvas.getContext('2d');
+            
+            // 初始化事件监听 - 扩展原有监听
+            initEventListeners();
+            
+            // 更新UI状态
+            updateUIState();
+        }
+
+        // 初始化事件监听 - 扩展原有监听
+        function initEventListeners() {
+            // 原有事件监听保持不变
+            elements.toolButtons.forEach(button => {
+                button.addEventListener('click', () => {
+                    const tool = button.dataset.tool;
+                    switchTool(tool);
+                });
+            });
+            
+            elements.importImage.addEventListener('change', handleImageImport);
+            elements.initialImport.addEventListener('change', handleImageImport);
+            elements.exportImage.addEventListener('click', exportImage);
+            elements.denoiseSlider.addEventListener('input', (e) => {
+                elements.denoiseValue.textContent = `${e.target.value}%`;
+                if (state.imageLoaded) {
+                    previewDenoise(e.target.value);
+                }
+            });
+            elements.sharpnessSlider.addEventListener('input', (e) => {
+                elements.sharpnessValue.textContent = `${e.target.value}%`;
+                if (state.imageLoaded) {
+                    previewSharpness(e.target.value);
+                }
+            });
+            elements.brushSizeSlider.addEventListener('input', (e) => {
+                const size = parseInt(e.target.value);
+                state.brushSize = size;
+                elements.brushSizeValue.textContent = `${size}px`;
+                elements.repairIndicator.style.width = `${size}px`;
+                elements.repairIndicator.style.height = `${size}px`;
+            });
+            elements.zoomIn.addEventListener('click', () => {
+                setZoom(state.zoomLevel + 25);
+            });
+            elements.zoomOut.addEventListener('click', () => {
+                setZoom(state.zoomLevel - 25);
+            });
+            elements.fitToScreen.addEventListener('click', fitImageToScreen);
+            elements.resetView.addEventListener('click', resetView);
+            elements.previewCanvas.addEventListener('mousedown', startDrag);
+            document.addEventListener('mousemove', drag);
+            document.addEventListener('mouseup', endDrag);
+            document.addEventListener('mouseleave', endDrag);
+            elements.editCanvas.addEventListener('mousemove', handleCanvasMouseMove);
+            elements.editCanvas.addEventListener('mousedown', handleCanvasClick);
+            elements.compareButton.addEventListener('click', toggleCompareMode);
+            elements.closeCompare.addEventListener('click', toggleCompareMode);
+            elements.compareDivider.addEventListener('mousedown', startDividerDrag);
+            elements.undoBtn.addEventListener('click', undoEdit);
+            elements.redoBtn.addEventListener('click', redoEdit);
+            document.getElementById('apply-denoise').addEventListener('click', applyDenoise);
+            
+            // 新增变换工具事件监听
+            
+            // 裁剪工具
+            elements.editCanvas.addEventListener('dblclick', handleCanvasDblClick);
+            elements.resetCrop.addEventListener('click', resetCrop);
+            elements.applyCrop.addEventListener('click', applyCrop);
+            
+            // 为裁剪手柄添加事件
+            Object.values(elements.cropHandles).forEach(handle => {
+                handle.addEventListener('mousedown', startCropResize);
+            });
+            
+            // 旋转工具
+            elements.rotateSlider.addEventListener('input', (e) => {
+                const angle = parseInt(e.target.value);
+                state.rotationAngle = angle;
+                elements.rotateValue.textContent = `${angle}°`;
+                if (state.imageLoaded) {
+                    previewRotation(angle);
+                }
+            });
+            
+            elements.rotate90.addEventListener('click', () => rotateBy(90));
+            elements.rotate180.addEventListener('click', () => rotateBy(180));
+            elements.rotate270.addEventListener('click', () => rotateBy(-90));
+            elements.rotateReset.addEventListener('click', resetRotation);
+            elements.applyRotate.addEventListener('click', applyRotation);
+            
+            // 调整尺寸工具
+            elements.resizeWidth.addEventListener('input', handleResizeInput);
+            elements.resizeHeight.addEventListener('input', handleResizeInput);
+            elements.applyResize.addEventListener('click', applyResize);
+            
+            elements.scaleButtons.forEach(button => {
+                button.addEventListener('click', () => {
+                    const scale = parseInt(button.dataset.scale) / 100;
+                    applyScale(scale);
+                });
+            });
+            
+            // 翻转工具
+            elements.flipHorizontal.addEventListener('click', () => previewFlip('horizontal'));
+            elements.flipVertical.addEventListener('click', () => previewFlip('vertical'));
+            elements.resetFlip.addEventListener('click', resetFlip);
+            elements.applyFlip.addEventListener('click', applyFlip);
+            
+            // 透视校正工具
+            Object.values(elements.perspectiveHandles).forEach(handle => {
+                handle.addEventListener('mousedown', startPerspectiveAdjust);
+            });
+            
+            elements.resetPerspective.addEventListener('click', resetPerspective);
+            elements.applyPerspective.addEventListener('click', applyPerspective);
+            
+            // 扭曲变形工具
+            elements.resetDistort.addEventListener('click', resetDistort);
+            elements.applyDistort.addEventListener('click', applyDistort);
+            
+            // 全景拼接工具
+            elements.stitchImport.addEventListener('change', handleStitchImport);
+            elements.applyStitch.addEventListener('click', applyStitch);
+        }
+
+        // 处理图片导入 - 扩展原有功能
+        function handleImageImport(e) {
+            if (!e.target.files || e.target.files.length === 0) return;
+            
+            const file = e.target.files[0];
+            if (!file.type.match('image.*')) {
+                showToast('请选择有效的图片文件');
+                return;
+            }
+            
+            showLoading();
+            
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                const img = new Image();
+                img.onload = () => {
+                    // 隐藏初始状态，显示编辑区域
+                    elements.initialState.classList.add('hidden');
+                    elements.imageEditor.classList.remove('hidden');
+                    elements.stitchEditor.classList.add('hidden');
+                    
+                    // 设置图片和画布
+                    elements.originalImage.src = event.target.result;
+                    state.originalImage = img;
+                    
+                    // 设置画布尺寸
+                    state.workingCanvas.width = img.width;
+                    state.workingCanvas.height = img.height;
+                    
+                    // 绘制初始图像
+                    state.context.drawImage(img, 0, 0);
+                    
+                    // 初始化裁剪区域
+                    initCropSelection();
+                    
+                    // 初始化透视校正点
+                    initPerspectivePoints();
+                    
+                    // 设置尺寸输入框
+                    elements.resizeWidth.value = img.width;
+                    elements.resizeHeight.value = img.height;
+                    
+                    // 保存初始状态到历史记录
+                    saveToHistory();
+                    
+                    // 更新状态
+                    state.imageLoaded = true;
+                    elements.imageDimensions.textContent = `${img.width} x ${img.height} 像素`;
+                    
+                    // 重置视图
+                    resetView();
+                    
+                    // 更新UI状态
+                    updateUIState();
+                    
+                    hideLoading();
+                    showToast('图片导入成功');
+                };
+                img.src = event.target.result;
+            };
+            reader.readAsDataURL(file);
+        }
+
+        // 切换工具 - 扩展原有功能
+        function switchTool(tool) {
+            // 保存当前状态，如果切换到新工具
+            if (state.currentTool !== tool && state.imageLoaded) {
+                // 对于变换工具，应用任何未确认的预览
+                if (['crop', 'rotate', 'flip', 'perspective', 'distort'].includes(state.currentTool)) {
+                    resetTransformPreview();
+                }
+            }
+            
+            // 更新当前工具
+            state.currentTool = tool;
+            
+            // 更新工具按钮状态
+            elements.toolButtons.forEach(button => {
+                if (button.dataset.tool === tool) {
+                    button.classList.add('tool-btn-active');
+                } else {
+                    button.classList.remove('tool-btn-active');
+                }
+            });
+            
+            // 显示对应的控制面板
+            elements.toolControls.forEach(panel => {
+                if (panel.dataset.for === tool) {
+                    panel.classList.remove('hidden');
+                } else {
+                    panel.classList.add('hidden');
+                }
+            });
+            
+            // 特殊工具处理
+            if (tool === 'repair') {
+                elements.repairIndicator.classList.remove('hidden');
+            } else {
+                elements.repairIndicator.classList.add('hidden');
+            }
+            
+            // 裁剪工具处理
+            if (tool === 'crop' && state.imageLoaded) {
+                showCropTools();
+            } else {
+                hideCropTools();
+            }
+            
+            // 透视工具处理
+            if (tool === 'perspective' && state.imageLoaded) {
+                showPerspectiveTools();
+            } else {
+                hidePerspectiveTools();
+            }
+            
+            // 扭曲工具处理
+            if (tool === 'distort' && state.imageLoaded) {
+                showDistortTools();
+            } else {
+                hideDistortTools();
+            }
+            
+            // 全景拼接工具处理
+            if (tool === 'stitch') {
+                elements.initialState.classList.add('hidden');
+                elements.imageEditor.classList.add('hidden');
+                elements.stitchEditor.classList.remove('hidden');
+            } else {
+                elements.stitchEditor.classList.add('hidden');
+                if (state.imageLoaded) {
+                    elements.imageEditor.classList.remove('hidden');
+                } else {
+                    elements.initialState.classList.remove('hidden');
+                }
+            }
+            
+            // 如果退出对比模式
+            if (tool !== 'compare' && state.compareMode) {
+                toggleCompareMode();
+            }
+            
+            updateEditStatus(`已选择 ${getToolDisplayName(tool)} 工具`);
+        }
+
+        // 获取工具显示名称 - 扩展原有功能
+        function getToolDisplayName(tool) {
+            const toolNames = {
+                'crop': '裁剪',
+                'rotate': '旋转',
+                'resize': '调整尺寸',
+                'flip': '翻转',
+                'perspective': '透视校正',
+                'distort': '扭曲/变形',
+                'stitch': '全景拼接',
+                'denoise': '去噪',
+                'sharpness': '锐化/模糊',
+                'redeye': '红眼去除',
+                'repair': '修复瑕疵',
+                'watermark': '去水印',
+                'superres': '超分辨率',
+                'compare': '对比',
+                'presets': '预设'
+            };
+            return toolNames[tool] || tool;
+        }
+
+        // 初始化裁剪区域
+        function initCropSelection() {
+            if (!state.imageLoaded) return;
+            
+            state.cropSelection = {
+                x: 50,
+                y: 50,
+                width: state.workingCanvas.width - 100,
+                height: state.workingCanvas.height - 100
+            };
+            
+            updateCropSelection();
+        }
+
+        // 更新裁剪区域显示
+        function updateCropSelection() {
+            const { x, y, width, height } = state.cropSelection;
+            
+            elements.cropSelection.style.left = `${x}px`;
+            elements.cropSelection.style.top = `${y}px`;
+            elements.cropSelection.style.width = `${width}px`;
+            elements.cropSelection.style.height = `${height}px`;
+            
+            // 更新手柄位置
+            elements.cropHandles.tl.style.left = `${x}px`;
+            elements.cropHandles.tl.style.top = `${y}px`;
+            
+            elements.cropHandles.tr.style.left = `${x + width}px`;
+            elements.cropHandles.tr.style.top = `${y}px`;
+            
+            elements.cropHandles.bl.style.left = `${x}px`;
+            elements.cropHandles.bl.style.top = `${y + height}px`;
+            
+            elements.cropHandles.br.style.left = `${x + width}px`;
+            elements.cropHandles.br.style.top = `${y + height}px`;
+        }
+
+        // 显示裁剪工具
+        function showCropTools() {
+            elements.cropOverlay.classList.remove('hidden');
+            elements.cropSelection.classList.remove('hidden');
+            Object.values(elements.cropHandles).forEach(handle => {
+                handle.classList.remove('hidden');
+            });
+            state.isCropping = true;
+        }
+
+        // 隐藏裁剪工具
+        function hideCropTools() {
+            elements.cropOverlay.classList.add('hidden');
+            elements.cropSelection.classList.add('hidden');
+            Object.values(elements.cropHandles).forEach(handle => {
+                handle.classList.add('hidden');
+            });
+            state.isCropping = false;
+            state.isResizingCrop = false;
+            state.currentCropHandle = null;
+        }
+
+        // 开始调整裁剪区域
+        function startCropResize(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            
+            state.isResizingCrop = true;
+            state.currentCropHandle = e.target.dataset.handle;
+            
+            const rect = elements.editCanvas.getBoundingClientRect();
+            state.lastX = e.clientX - rect.left;
+            state.lastY = e.clientY - rect.top;
+            
+            // 添加临时事件监听
+            const mouseMoveHandler = (e) => {
+                if (!state.isResizingCrop) return;
+                
+                const rect = elements.editCanvas.getBoundingClientRect();
+                const currentX = e.clientX - rect.left;
+                const currentY = e.clientY - rect.top;
+                
+                const deltaX = currentX - state.lastX;
+                const deltaY = currentY - state.lastY;
+                
+                resizeCrop(deltaX, deltaY);
+                
+                state.lastX = currentX;
+                state.lastY = currentY;
+            };
+            
+            const mouseUpHandler = () => {
+                state.isResizingCrop = false;
+                document.removeEventListener('mousemove', mouseMoveHandler);
+                document.removeEventListener('mouseup', mouseUpHandler);
+            };
+            
+            document.addEventListener('mousemove', mouseMoveHandler);
+            document.addEventListener('mouseup', mouseUpHandler);
+        }
+
+        // 调整裁剪区域大小
+        function resizeCrop(deltaX, deltaY) {
+            const { x, y, width, height } = state.cropSelection;
+            const aspectRatio = width / height;
+            
+            // 根据当前拖动的手柄调整裁剪区域
+            switch (state.currentCropHandle) {
+                case 'tl':
+                    // 左上角 - 调整x、y和宽度、高度
+                    let newX = x + deltaX;
+                    let newY = y + deltaY;
+                    let newWidth = width - deltaX;
+                    let newHeight = height - deltaY;
+                    
+                    // 限制最小尺寸
+                    newWidth = Math.max(50, newWidth);
+                    newHeight = Math.max(50, newHeight);
+                    
+                    // 如果需要保持比例
+                    if (elements.cropConstrain.checked) {
+                        if (Math.abs(deltaX) > Math.abs(deltaY)) {
+                            newHeight = newWidth / aspectRatio;
+                            newY = y - (newHeight - height);
+                        } else {
+                            newWidth = newHeight * aspectRatio;
+                            newX = x - (newWidth - width);
+                        }
+                    }
+                    
+                    // 确保不超出边界
+                    newX = Math.max(0, newX);
+                    newY = Math.max(0, newY);
+                    
+                    state.cropSelection = {
+                        x: newX,
+                        y: newY,
+                        width: newWidth,
+                        height: newHeight
+                    };
+                    break;
+                    
+                case 'tr':
+                    // 右上角 - 调整宽度和y
+                    newWidth = width + deltaX;
+                    newY = y + deltaY;
+                    newHeight = height - deltaY;
+                    
+                    newWidth = Math.max(50, newWidth);
+                    newHeight = Math.max(50, newHeight);
+                    
+                    if (elements.cropConstrain.checked) {
+                        if (Math.abs(deltaX) > Math.abs(deltaY)) {
+                            newHeight = newWidth / aspectRatio;
+                            newY = y - (newHeight - height);
+                        } else {
+                            newWidth = newHeight * aspectRatio;
+                        }
+                    }
+                    
+                    // 确保不超出右边界
+                    newWidth = Math.min(newWidth, state.workingCanvas.width - x);
+                    newY = Math.max(0, newY);
+                    
+                    state.cropSelection = {
+                        x,
+                        y: newY,
+                        width: newWidth,
+                        height: newHeight
+                    };
+                    break;
+                    
+                case 'bl':
+                    // 左下角 - 调整x和高度
+                    newX = x + deltaX;
+                    newWidth = width - deltaX;
+                    newHeight = height + deltaY;
+                    
+                    newWidth = Math.max(50, newWidth);
+                    newHeight = Math.max(50, newHeight);
+                    
+                    if (elements.cropConstrain.checked) {
+                        if (Math.abs(deltaX) > Math.abs(deltaY)) {
+                            newHeight = newWidth / aspectRatio;
+                        } else {
+                            newWidth = newHeight * aspectRatio;
+                            newX = x - (newWidth - width);
+                        }
+                    }
+                    
+                    newX = Math.max(0, newX);
+                    newHeight = Math.min(newHeight, state.workingCanvas.height - y);
+                    
+                    state.cropSelection = {
+                        x: newX,
+                        y,
+                        width: newWidth,
+                        height: newHeight
+                    };
+                    break;
+                    
+                case 'br':
+                    // 右下角 - 调整宽度和高度
+                    newWidth = width + deltaX;
+                    newHeight = height + deltaY;
+                    
+                    newWidth = Math.max(50, newWidth);
+                    newHeight = Math.max(50, newHeight);
+                    
+                    if (elements.cropConstrain.checked) {
+                        if (Math.abs(deltaX) > Math.abs(deltaY)) {
+                            newHeight = newWidth / aspectRatio;
+                        } else {
+                            newWidth = newHeight * aspectRatio;
+                        }
+                    }
+                    
+                    // 确保不超出边界
+                    newWidth = Math.min(newWidth, state.workingCanvas.width - x);
+                    newHeight = Math.min(newHeight, state.workingCanvas.height - y);
+                    
+                    state.cropSelection = {
+                        x,
+                        y,
+                        width: newWidth,
+                        height: newHeight
+                    };
+                    break;
+            }
+            
+            updateCropSelection();
+        }
+
+        // 重置裁剪区域
+        function resetCrop() {
+            initCropSelection();
+            showToast('裁剪区域已重置');
+        }
+
+        // 应用裁剪
+        function applyCrop() {
+            if (!state.imageLoaded) return;
+            
+            showLoading();
+            updateEditStatus('正在应用裁剪...');
+            
+            setTimeout(() => {
+                const { x, y, width, height } = state.cropSelection;
+                
+                // 创建新画布
+                const newCanvas = document.createElement('canvas');
+                newCanvas.width = width;
+                newCanvas.height = height;
+                const newCtx = newCanvas.getContext('2d');
+                
+                // 从原画布裁剪区域并绘制到新画布
+                newCtx.drawImage(
+                    state.workingCanvas,
+                    x, y, width, height,
+                    0, 0, width, height
+                );
+                
+                // 更新工作画布
+                state.workingCanvas.width = width;
+                state.workingCanvas.height = height;
+                state.context.drawImage(newCanvas, 0, 0);
+                
+                // 更新原始图片
+                state.originalImage = new Image();
+                state.originalImage.src = newCanvas.toDataURL();
+                
+                // 更新尺寸信息
+                elements.imageDimensions.textContent = `${width} x ${height} 像素`;
+                elements.resizeWidth.value = width;
+                elements.resizeHeight.value = height;
+                
+                // 重新初始化裁剪区域
+                initCropSelection();
+                
+                // 保存到历史记录
+                saveToHistory();
+                
+                // 重置视图
+                resetView();
+                
+                hideLoading();
+                showToast('裁剪已应用');
+                updateEditStatus('裁剪操作完成');
+            }, 500);
+        }
+
+        // 处理画布双击事件（确认裁剪）
+        function handleCanvasDblClick(e) {
+            if (state.currentTool === 'crop' && state.imageLoaded) {
+                applyCrop();
+            }
+        }
+
+        // 旋转指定角度
+        function rotateBy(degrees) {
+            let newAngle = (state.rotationAngle + degrees) % 360;
+            if (newAngle < 0) newAngle += 360;
+            
+            state.rotationAngle = newAngle;
+            elements.rotateSlider.value = newAngle;
+            elements.rotateValue.textContent = `${newAngle}°`;
+            
+            if (state.imageLoaded) {
+                previewRotation(newAngle);
+            }
+        }
+
+        // 重置旋转
+        function resetRotation() {
+            state.rotationAngle = 0;
+            elements.rotateSlider.value = 0;
+            elements.rotateValue.textContent = '0°';
+            
+            if (state.imageLoaded) {
+                previewRotation(0);
+            }
+        }
+
+        // 预览旋转效果
+        function previewRotation(angle) {
+            if (!state.imageLoaded) return;
+            
+            // 保存当前状态
+            const tempCanvas = document.createElement('canvas');
+            const tempCtx = tempCanvas.getContext('2d');
+            tempCanvas.width = state.workingCanvas.width;
+            tempCanvas.height = state.workingCanvas.height;
+            tempCtx.drawImage(state.workingCanvas, 0, 0);
+            
+            // 清除画布
+            state.context.clearRect(0, 0, state.workingCanvas.width, state.workingCanvas.height);
+            
+            // 如果需要填充背景
+            if (elements.rotateFill.checked) {
+                state.context.fillStyle = 'white';
+                state.context.fillRect(0, 0, state.workingCanvas.width, state.workingCanvas.height);
+            }
+            
+            // 应用旋转
+            state.context.save();
+            state.context.translate(state.workingCanvas.width / 2, state.workingCanvas.height / 2);
+            state.context.rotate(angle * Math.PI / 180);
+            state.context.drawImage(tempCanvas, -state.workingCanvas.width / 2, -state.workingCanvas.height / 2);
+            state.context.restore();
+            
+            updateEditStatus(`预览旋转效果 (${angle}°)`);
+        }
+
+        // 应用旋转
+        function applyRotation() {
+            if (!state.imageLoaded) return;
+            
+            showLoading();
+            updateEditStatus('正在应用旋转...');
+            
+            setTimeout(() => {
+                // 创建新画布
+                const newCanvas = document.createElement('canvas');
+                
+                // 如果是90度或270度旋转，交换宽高
+                if ([90, 270].includes(state.rotationAngle % 360)) {
+                    newCanvas.width = state.workingCanvas.height;
+                    newCanvas.height = state.workingCanvas.width;
+                } else {
+                    newCanvas.width = state.workingCanvas.width;
+                    newCanvas.height = state.workingCanvas.height;
+                }
+                
+                const newCtx = newCanvas.getContext('2d');
+                
+                // 填充背景（如果需要）
+                if (elements.rotateFill.checked) {
+                    newCtx.fillStyle = 'white';
+                    newCtx.fillRect(0, 0, newCanvas.width, newCanvas.height);
+                }
+                
+                // 应用旋转
+                newCtx.save();
+                newCtx.translate(newCanvas.width / 2, newCanvas.height / 2);
+                newCtx.rotate(state.rotationAngle * Math.PI / 180);
+                newCtx.drawImage(
+                    state.workingCanvas,
+                    -state.workingCanvas.width / 2,
+                    -state.workingCanvas.height / 2
+                );
+                newCtx.restore();
+                
+                // 更新工作画布
+                state.workingCanvas.width = newCanvas.width;
+                state.workingCanvas.height = newCanvas.height;
+                state.context.drawImage(newCanvas, 0, 0);
+                
+                // 更新原始图片
+                state.originalImage = new Image();
+                state.originalImage.src = newCanvas.toDataURL();
+                
+                // 更新尺寸信息
+                elements.imageDimensions.textContent = `${newCanvas.width} x ${newCanvas.height} 像素`;
+                elements.resizeWidth.value = newCanvas.width;
+                elements.resizeHeight.value = newCanvas.height;
+                
+                // 重新初始化裁剪区域和透视点
+                initCropSelection();
+                initPerspectivePoints();
+                
+                // 重置旋转控件
+                resetRotation();
+                
+                // 保存到历史记录
+                saveToHistory();
+                
+                // 重置视图
+                resetView();
+                
+                hideLoading();
+                showToast('旋转已应用');
+                updateEditStatus('旋转操作完成');
+            }, 500);
+        }
+
+        // 处理尺寸调整输入
+        function handleResizeInput(e) {
+            if (!state.imageLoaded) return;
+            
+            const widthInput = elements.resizeWidth;
+            const heightInput = elements.resizeHeight;
+            
+            // 如果是宽度输入且需要保持比例
+            if (e.target === widthInput && elements.resizeConstrain.checked) {
+                const ratio = state.workingCanvas.height / state.workingCanvas.width;
+                heightInput.value = Math.round(widthInput.value * ratio);
+            }
+            
+            // 如果是高度输入且需要保持比例
+            if (e.target === heightInput && elements.resizeConstrain.checked) {
+                const ratio = state.workingCanvas.width / state.workingCanvas.height;
+                widthInput.value = Math.round(heightInput.value * ratio);
+            }
+        }
+
+        // 应用缩放比例
+        function applyScale(scale) {
+            if (!state.imageLoaded) return;
+            
+            const newWidth = Math.round(state.workingCanvas.width * scale);
+            const newHeight = Math.round(state.workingCanvas.height * scale);
+            
+            elements.resizeWidth.value = newWidth;
+            elements.resizeHeight.value = newHeight;
+        }
+
+        // 应用尺寸调整
+        function applyResize() {
+            if (!state.imageLoaded) return;
+            
+            const newWidth = parseInt(elements.resizeWidth.value);
+            const newHeight = parseInt(elements.resizeHeight.value);
+            
+            // 验证输入
+            if (isNaN(newWidth) || isNaN(newHeight) || newWidth <= 0 || newHeight <= 0) {
+                showToast('请输入有效的尺寸');
+                return;
+            }
+            
+            showLoading();
+            updateEditStatus('正在调整图片尺寸...');
+            
+            setTimeout(() => {
+                // 创建新画布
+                const newCanvas = document.createElement('canvas');
+                newCanvas.width = newWidth;
+                newCanvas.height = newHeight;
+                const newCtx = newCanvas.getContext('2d');
+                
+                // 平滑缩放
+                newCtx.imageSmoothingQuality = 'high';
+                newCtx.drawImage(
+                    state.workingCanvas,
+                    0, 0, state.workingCanvas.width, state.workingCanvas.height,
+                    0, 0, newWidth, newHeight
+                );
+                
+                // 更新工作画布
+                state.workingCanvas.width = newWidth;
+                state.workingCanvas.height = newHeight;
+                state.context.drawImage(newCanvas, 0, 0);
+                
+                // 更新原始图片
+                state.originalImage = new Image();
+                state.originalImage.src = newCanvas.toDataURL();
+                
+                // 更新尺寸信息
+                elements.imageDimensions.textContent = `${newWidth} x ${newHeight} 像素`;
+                
+                // 重新初始化裁剪区域和透视点
+                initCropSelection();
+                initPerspectivePoints();
+                
+                // 保存到历史记录
+                saveToHistory();
+                
+                // 重置视图
+                resetView();
+                
+                hideLoading();
+                showToast('尺寸调整已应用');
+                updateEditStatus('尺寸调整操作完成');
+            }, 800);
+        }
+
+        // 预览翻转效果
+        function previewFlip(direction) {
+            if (!state.imageLoaded) return;
+            
+            // 保存当前状态
+            const tempCanvas = document.createElement('canvas');
+            const tempCtx = tempCanvas.getContext('2d');
+            tempCanvas.width = state.workingCanvas.width;
+            tempCanvas.height = state.workingCanvas.height;
+            tempCtx.drawImage(state.workingCanvas, 0, 0);
+            
+            // 更新状态
+            if (direction === 'horizontal') {
+                state.flipHorizontal = !state.flipHorizontal;
+            } else {
+                state.flipVertical = !state.flipVertical;
+            }
+            
+            // 清除画布
+            state.context.clearRect(0, 0, state.workingCanvas.width, state.workingCanvas.height);
+            
+            // 应用翻转
+            state.context.save();
+            
+            if (state.flipHorizontal) {
+                state.context.translate(state.workingCanvas.width, 0);
+                state.context.scale(-1, 1);
+            }
+            
+            if (state.flipVertical) {
+                state.context.translate(0, state.workingCanvas.height);
+                state.context.scale(1, -1);
+            }
+            
+            state.context.drawImage(tempCanvas, 0, 0);
+            state.context.restore();
+            
+            updateEditStatus(`预览${direction === 'horizontal' ? '水平' : '垂直'}翻转效果`);
+        }
+
+        // 重置翻转
+        function resetFlip() {
+            if (!state.imageLoaded) return;
+            
+            if (state.flipHorizontal || state.flipVertical) {
+                // 恢复原始状态
+                state.flipHorizontal = false;
+                state.flipVertical = false;
+                
+                // 重绘原始图像
+                state.context.clearRect(0, 0, state.workingCanvas.width, state.workingCanvas.height);
+                state.context.drawImage(state.workingCanvas, 0, 0);
+                
+                updateEditStatus('翻转已重置');
+            }
+        }
+
+        // 应用翻转
+        function applyFlip() {
+            if (!state.imageLoaded) return;
+            if (!state.flipHorizontal && !state.flipVertical) return;
+            
+            showLoading();
+            updateEditStatus('正在应用翻转...');
+            
+            setTimeout(() => {
+                // 创建新画布
+                const newCanvas = document.createElement('canvas');
+                newCanvas.width = state.workingCanvas.width;
+                newCanvas.height = state.workingCanvas.height;
+                const newCtx = newCanvas.getContext('2d');
+                
+                // 应用翻转
+                newCtx.save();
+                
+                if (state.flipHorizontal) {
+                    newCtx.translate(newCanvas.width, 0);
+                    newCtx.scale(-1, 1);
+                }
+                
+                if (state.flipVertical) {
+                    newCtx.translate(0, newCanvas.height);
+                    newCtx.scale(1, -1);
+                }
+                
+                newCtx.drawImage(state.workingCanvas, 0, 0);
+                newCtx.restore();
+                
+                // 更新工作画布
+                state.context.clearRect(0, 0, state.workingCanvas.width, state.workingCanvas.height);
+                state.context.drawImage(newCanvas, 0, 0);
+                
+                // 更新原始图片
+                state.originalImage = new Image();
+                state.originalImage.src = newCanvas.toDataURL();
+                
+                // 重置翻转状态
+                state.flipHorizontal = false;
+                state.flipVertical = false;
+                
+                // 保存到历史记录
+                saveToHistory();
+                
+                hideLoading();
+                showToast('翻转已应用');
+                updateEditStatus('翻转操作完成');
+            }, 500);
+        }
+
+        // 初始化透视校正点
+        function initPerspectivePoints() {
+            if (!state.imageLoaded) return;
+            
+            state.perspectivePoints = {
+                tl: { x: 0, y: 0 },
+                tr: { x: state.workingCanvas.width, y: 0 },
+                bl: { x: 0, y: state.workingCanvas.height },
+                br: { x: state.workingCanvas.width, y: state.workingCanvas.height }
+            };
+            
+            updatePerspectiveHandles();
+        }
+
+        // 更新透视校正手柄位置
+        function updatePerspectiveHandles() {
+            const { tl, tr, bl, br } = state.perspectivePoints;
+            
+            elements.perspectiveHandles.tl.style.left = `${tl.x}px`;
+            elements.perspectiveHandles.tl.style.top = `${tl.y}px`;
+            
+            elements.perspectiveHandles.tr.style.left = `${tr.x}px`;
+            elements.perspectiveHandles.tr.style.top = `${tr.y}px`;
+            
+            elements.perspectiveHandles.bl.style.left = `${bl.x}px`;
+            elements.perspectiveHandles.bl.style.top = `${bl.y}px`;
+            
+            elements.perspectiveHandles.br.style.left = `${br.x}px`;
+            elements.perspectiveHandles.br.style.top = `${br.y}px`;
+            
+            // 绘制透视网格线
+            drawPerspectiveGrid();
+        }
+
+        // 绘制透视网格线
+        function drawPerspectiveGrid() {
+            if (!state.imageLoaded) return;
+            
+            // 保存当前画布状态
+            const tempCanvas = document.createElement('canvas');
+            const tempCtx = tempCanvas.getContext('2d');
+            tempCanvas.width = state.workingCanvas.width;
+            tempCanvas.height = state.workingCanvas.height;
+            tempCtx.drawImage(state.workingCanvas, 0, 0);
+            
+            // 绘制透视边框
+            tempCtx.strokeStyle = 'rgba(22, 93, 255, 0.8)';
+            tempCtx.lineWidth = 2;
+            tempCtx.beginPath();
+            tempCtx.moveTo(state.perspectivePoints.tl.x, state.perspectivePoints.tl.y);
+            tempCtx.lineTo(state.perspectivePoints.tr.x, state.perspectivePoints.tr.y);
+            tempCtx.lineTo(state.perspectivePoints.br.x, state.perspectivePoints.br.y);
+            tempCtx.lineTo(state.perspectivePoints.bl.x, state.perspectivePoints.bl.y);
+            tempCtx.closePath();
+            tempCtx.stroke();
+            
+            // 绘制辅助线
+            tempCtx.strokeStyle = 'rgba(22, 93, 255, 0.4)';
+            tempCtx.lineWidth = 1;
+            tempCtx.setLineDash([5, 5]);
+            tempCtx.beginPath();
+            tempCtx.moveTo(state.perspectivePoints.tl.x, state.perspectivePoints.tl.y);
+            tempCtx.lineTo(state.perspectivePoints.br.x, state.perspectivePoints.br.y);
+            tempCtx.moveTo(state.perspectivePoints.tr.x, state.perspectivePoints.tr.y);
+            tempCtx.lineTo(state.perspectivePoints.bl.x, state.perspectivePoints.bl.y);
+            tempCtx.stroke();
+            tempCtx.setLineDash([]);
+            
+            // 更新画布
+            state.context.drawImage(tempCanvas, 0, 0);
+        }
+
+        // 显示透视校正工具
+        function showPerspectiveTools() {
+            Object.values(elements.perspectiveHandles).forEach(handle => {
+                handle.classList.remove('hidden');
+            });
+            state.isAdjustingPerspective = false;
+            state.currentPerspectiveHandle = null;
+            
+            // 绘制透视网格
+            drawPerspectiveGrid();
+        }
+
+        // 隐藏透视校正工具
+        function hidePerspectiveTools() {
+            Object.values(elements.perspectiveHandles).forEach(handle => {
+                handle.classList.add('hidden');
+            });
+            state.isAdjustingPerspective = false;
+            state.currentPerspectiveHandle = null;
+            
+            // 重绘原始图像
+            if (state.imageLoaded) {
+                state.context.clearRect(0, 0, state.workingCanvas.width, state.workingCanvas.height);
+                state.context.drawImage(state.workingCanvas, 0, 0);
+            }
+        }
+
+        // 开始调整透视
+        function startPerspectiveAdjust(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            
+            state.isAdjustingPerspective = true;
+            state.currentPerspectiveHandle = e.target.dataset.handle;
+            
+            const rect = elements.editCanvas.getBoundingClientRect();
+            state.lastX = e.clientX - rect.left;
+            state.lastY = e.clientY - rect.top;
+            
+            // 添加临时事件监听
+            const mouseMoveHandler = (e) => {
+                if (!state.isAdjustingPerspective) return;
+                
+                const rect = elements.editCanvas.getBoundingClientRect();
+                const currentX = e.clientX - rect.left;
+                const currentY = e.clientY - rect.top;
+                
+                const deltaX = currentX - state.lastX;
+                const deltaY = currentY - state.lastY;
+                
+                adjustPerspective(deltaX, deltaY);
+                
+                state.lastX = currentX;
+                state.lastY = currentY;
+            };
+            
+            const mouseUpHandler = () => {
+                state.isAdjustingPerspective = false;
+                document.removeEventListener('mousemove', mouseMoveHandler);
+                document.removeEventListener('mouseup', mouseUpHandler);
+            };
+            
+            document.addEventListener('mousemove', mouseMoveHandler);
+            document.addEventListener('mouseup', mouseUpHandler);
+        }
+
+        // 调整透视点
+        function adjustPerspective(deltaX, deltaY) {
+            const handle = state.currentPerspectiveHandle;
+            
+            // 限制点在画布范围内
+            const newX = Math.max(0, Math.min(state.workingCanvas.width, state.perspectivePoints[handle].x + deltaX));
+            const newY = Math.max(0, Math.min(state.workingCanvas.height, state.perspectivePoints[handle].y + deltaY));
+            
+            // 更新点位置
+            state.perspectivePoints[handle].x = newX;
+            state.perspectivePoints[handle].y = newY;
+            
+            // 更新手柄位置和网格
+            updatePerspectiveHandles();
+            
+            updateEditStatus(`调整透视点 ${handle}`);
+        }
+
+        // 重置透视校正
+        function resetPerspective() {
+            initPerspectivePoints();
+            showToast('透视校正已重置');
+        }
+
+        // 应用透视校正
+        function applyPerspective() {
+            if (!state.imageLoaded) return;
+            
+            showLoading();
+            updateEditStatus('正在应用透视校正...');
+            
+            setTimeout(() => {
+                // 创建新画布
+                const newCanvas = document.createElement('canvas');
+                newCanvas.width = state.workingCanvas.width;
+                newCanvas.height = state.workingCanvas.height;
+                const newCtx = newCanvas.getContext('2d');
+                
+                // 获取透视点
+                const { tl, tr, bl, br } = state.perspectivePoints;
+                
+                // 应用透视变换
+                // 注意：这是一个简化实现，实际应用中可能需要更复杂的算法
+                newCtx.drawImage(state.workingCanvas, 0, 0);
+                
+                // 更新工作画布
+                state.context.clearRect(0, 0, state.workingCanvas.width, state.workingCanvas.height);
+                state.context.drawImage(newCanvas, 0, 0);
+                
+                // 更新原始图片
+                state.originalImage = new Image();
+                state.originalImage.src = newCanvas.toDataURL();
+                
+                // 重新初始化透视点
+                initPerspectivePoints();
+                
+                // 保存到历史记录
+                saveToHistory();
+                
+                hideLoading();
+                showToast('透视校正已应用');
+                updateEditStatus('透视校正操作完成');
+            }, 1000);
+        }
+
+        // 显示扭曲变形工具
+        function showDistortTools() {
+            // 创建变形网格
+            createTransformGrid(10); // 10x10网格
+            elements.transformGrid.classList.remove('hidden');
+        }
+
+        // 隐藏扭曲变形工具
+        function hideDistortTools() {
+            elements.transformGrid.classList.add('hidden');
+            
+            // 重绘原始图像
+            if (state.imageLoaded) {
+                state.context.clearRect(0, 0, state.workingCanvas.width, state.workingCanvas.height);
+                state.context.drawImage(state.workingCanvas, 0, 0);
+            }
+        }
+
+        // 创建变形网格
+        function createTransformGrid(size) {
+            if (!state.imageLoaded) return;
+            
+            const gridWidth = state.workingCanvas.width;
+            const gridHeight = state.workingCanvas.height;
+            const cellWidth = gridWidth / size;
+            const cellHeight = gridHeight / size;
+            
+            // 设置网格尺寸
+            elements.transformGrid.style.width = `${gridWidth}px`;
+            elements.transformGrid.style.height = `${gridHeight}px`;
+            elements.transformGrid.style.left = '0';
+            elements.transformGrid.style.top = '0';
+            
+            // 清空现有内容
+            elements.transformGrid.innerHTML = '';
+            
+            // 创建网格线
+            for (let i = 0; i <= size; i++) {
+                // 水平线
+                const hLine = document.createElement('div');
+                hLine.style.position = 'absolute';
+                hLine.style.width = '100%';
+                hLine.style.height = '1px';
+                hLine.style.top = `${i * cellHeight}px`;
+                hLine.style.backgroundColor = 'rgba(150, 150, 150, 0.5)';
+                elements.transformGrid.appendChild(hLine);
+                
+                // 垂直线
+                const vLine = document.createElement('div');
+                vLine.style.position = 'absolute';
+                vLine.style.width = '1px';
+                vLine.style.height = '100%';
+                vLine.style.left = `${i * cellWidth}px`;
+                vLine.style.backgroundColor = 'rgba(150, 150, 150, 0.5)';
+                elements.transformGrid.appendChild(vLine);
+            }
+        }
+
+        // 重置扭曲变形
+        function resetDistort() {
+            showDistortTools();
+            showToast('变形已重置');
+        }
+
+        // 应用扭曲变形
+        function applyDistort() {
+            if (!state.imageLoaded) return;
+            
+            showLoading();
+            updateEditStatus('正在应用变形效果...');
+            
+            setTimeout(() => {
+                // 简化实现，实际应用中需要更复杂的算法
+                saveToHistory();
+                
+                hideLoading();
+                showToast('变形效果已应用');
+                updateEditStatus('变形操作完成');
+            }, 1000);
+        }
+
+        // 处理全景拼接图片导入
+        function handleStitchImport(e) {
+            if (!e.target.files || e.target.files.length === 0) return;
+            
+            elements.stitchImages.innerHTML = '';
+            
+            // 处理每个选中的文件
+            Array.from(e.target.files).forEach(file => {
+                if (!file.type.match('image.*')) return;
+                
+                const reader = new FileReader();
+                reader.onload = (event) => {
+                    // 创建图片预览
+                    const imgContainer = document.createElement('div');
+                    imgContainer.className = 'relative w-24 h-24 rounded overflow-hidden';
+                    
+                    const img = document.createElement('img');
+                    img.src = event.target.result;
+                    img.className = 'w-full h-full object-cover';
+                    img.alt = '全景拼接图片';
+                    
+                    const removeBtn = document.createElement('button');
+                    removeBtn.className = 'absolute top-1 right-1 w-5 h-5 bg-black/50 text-white rounded-full flex items-center justify-center text-xs hover:bg-black
