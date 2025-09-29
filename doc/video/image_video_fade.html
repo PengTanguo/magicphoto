@@ -1,0 +1,1254 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>图片转场效果编辑器</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        }
+
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 30px;
+            font-size: 2.5rem;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .main-layout {
+            display: grid;
+            grid-template-columns: 1fr 350px;
+            gap: 30px;
+        }
+
+        /* 左侧预览区域 */
+        .preview-section {
+            background: #f8f9fa;
+            border-radius: 15px;
+            padding: 20px;
+        }
+
+        .upload-area {
+            border: 3px dashed #667eea;
+            border-radius: 10px;
+            padding: 30px;
+            text-align: center;
+            margin-bottom: 20px;
+            background: white;
+            transition: all 0.3s;
+        }
+
+        .upload-area:hover {
+            border-color: #764ba2;
+            background: #f8f9ff;
+        }
+
+        .upload-btn {
+            display: inline-block;
+            padding: 12px 30px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: transform 0.3s;
+        }
+
+        .upload-btn:hover {
+            transform: scale(1.05);
+        }
+
+        #fileInput {
+            display: none;
+        }
+
+        .image-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .image-item {
+            position: relative;
+            aspect-ratio: 1;
+            border-radius: 8px;
+            overflow: hidden;
+            cursor: pointer;
+            border: 2px solid transparent;
+            transition: all 0.3s;
+        }
+
+        .image-item:hover {
+            border-color: #667eea;
+            transform: scale(1.05);
+        }
+
+        .image-item img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .image-item .remove-btn {
+            position: absolute;
+            top: 5px;
+            right: 5px;
+            background: rgba(255, 0, 0, 0.8);
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 25px;
+            height: 25px;
+            cursor: pointer;
+            display: none;
+        }
+
+        .image-item:hover .remove-btn {
+            display: block;
+        }
+
+        .preview-canvas-container {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+        }
+
+        #previewCanvas {
+            width: 100%;
+            max-width: 800px;
+            height: 450px;
+            border-radius: 10px;
+            background: #000;
+            display: block;
+            margin: 0 auto;
+        }
+
+        .controls {
+            margin-top: 20px;
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+        }
+
+        .control-btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 25px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.3s;
+        }
+
+        .control-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .control-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        /* 右侧配置面板 */
+        .config-section {
+            background: #f8f9fa;
+            border-radius: 15px;
+            padding: 20px;
+            height: fit-content;
+            position: sticky;
+            top: 20px;
+        }
+
+        .config-group {
+            margin-bottom: 25px;
+        }
+
+        .config-group h3 {
+            color: #333;
+            margin-bottom: 15px;
+            font-size: 18px;
+            border-bottom: 2px solid #667eea;
+            padding-bottom: 8px;
+        }
+
+        .transition-effects {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+
+        .effect-btn {
+            padding: 10px;
+            border: 2px solid #e0e0e0;
+            background: white;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-size: 14px;
+        }
+
+        .effect-btn:hover {
+            border-color: #667eea;
+            background: #f8f9ff;
+        }
+
+        .effect-btn.active {
+            border-color: #764ba2;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .config-item {
+            margin-bottom: 15px;
+        }
+
+        .config-item label {
+            display: block;
+            color: #555;
+            margin-bottom: 8px;
+            font-size: 14px;
+        }
+
+        .config-item input[type="range"] {
+            width: 100%;
+            height: 6px;
+            background: #e0e0e0;
+            border-radius: 3px;
+            outline: none;
+            -webkit-appearance: none;
+        }
+
+        .config-item input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 18px;
+            height: 18px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 50%;
+            cursor: pointer;
+        }
+
+        .config-item input[type="number"],
+        .config-item select {
+            width: 100%;
+            padding: 8px 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: border-color 0.3s;
+        }
+
+        .config-item input[type="number"]:focus,
+        .config-item select:focus {
+            border-color: #667eea;
+            outline: none;
+        }
+
+        .value-display {
+            display: inline-block;
+            margin-left: 10px;
+            color: #667eea;
+            font-weight: bold;
+        }
+
+        .generate-btn {
+            width: 100%;
+            padding: 15px;
+            background: linear-gradient(135deg, #00c851 0%, #00a846 100%);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s;
+            margin-top: 20px;
+        }
+
+        .generate-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(0, 200, 81, 0.3);
+        }
+
+        .progress-bar {
+            display: none;
+            margin-top: 20px;
+        }
+
+        .progress-bar.active {
+            display: block;
+        }
+
+        .progress-track {
+            width: 100%;
+            height: 10px;
+            background: #e0e0e0;
+            border-radius: 5px;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 5px;
+            transition: width 0.3s;
+            width: 0%;
+        }
+
+        .progress-text {
+            text-align: center;
+            margin-top: 10px;
+            color: #666;
+            font-size: 14px;
+        }
+
+        /* 转场效果样式 */
+        .canvas-wrapper {
+            position: relative;
+            width: 100%;
+            height: 450px;
+            overflow: hidden;
+            background: #000;
+            border-radius: 10px;
+        }
+
+        .transition-layer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h1>🎬 图片转场效果编辑器</h1>
+
+    <div class="main-layout">
+        <!-- 左侧预览区域 -->
+        <div class="preview-section">
+            <div class="upload-area">
+                <label for="fileInput" class="upload-btn">
+                    📁 上传图片
+                </label>
+                <input type="file" id="fileInput" multiple accept="image/*">
+                <p style="margin-top: 15px; color: #666;">支持多选，可拖拽上传</p>
+            </div>
+
+            <div class="image-list" id="imageList"></div>
+
+            <div class="preview-canvas-container">
+                <div class="canvas-wrapper">
+                    <canvas id="previewCanvas"></canvas>
+                </div>
+            </div>
+
+            <div class="controls">
+                <button class="control-btn" id="playBtn">▶️ 播放</button>
+                <button class="control-btn" id="pauseBtn">⏸️ 暂停</button>
+                <button class="control-btn" id="stopBtn">⏹️ 停止</button>
+            </div>
+        </div>
+
+        <!-- 右侧配置面板 -->
+        <div class="config-section">
+            <div class="config-group">
+                <h3>🎨 转场效果</h3>
+                <div class="transition-effects">
+                    <button class="effect-btn active" data-effect="fade">淡入淡出</button>
+                    <button class="effect-btn" data-effect="gradient">渐变过渡</button>
+                    <button class="effect-btn" data-effect="wipe-left">左擦除</button>
+                    <button class="effect-btn" data-effect="wipe-right">右擦除</button>
+                    <button class="effect-btn" data-effect="wipe-up">上擦除</button>
+                    <button class="effect-btn" data-effect="wipe-down">下擦除</button>
+                    <button class="effect-btn" data-effect="zoom-in">放大切换</button>
+                    <button class="effect-btn" data-effect="zoom-out">缩小切换</button>
+                    <button class="effect-btn" data-effect="flip-h">水平翻转</button>
+                    <button class="effect-btn" data-effect="flip-v">垂直翻转</button>
+                    <button class="effect-btn" data-effect="fragment">碎片化</button>
+                    <button class="effect-btn" data-effect="rotate">旋转切换</button>
+                </div>
+            </div>
+
+            <div class="config-group">
+                <h3>⚙️ 参数设置</h3>
+
+                <div class="config-item">
+                    <label>每张图片时长（秒）
+                        <span class="value-display" id="durationValue">3</span>
+                    </label>
+                    <input type="range" id="imageDuration" min="1" max="10" value="3" step="0.5">
+                </div>
+
+                <div class="config-item">
+                    <label>转场时长（秒）
+                        <span class="value-display" id="transitionValue">1</span>
+                    </label>
+                    <input type="range" id="transitionDuration" min="0.5" max="3" value="1" step="0.1">
+                </div>
+
+                <div class="config-item">
+                    <label>输出分辨率</label>
+                    <select id="resolution">
+                        <option value="1920x1080">1920×1080 (Full HD)</option>
+                        <option value="1280x720" selected>1280×720 (HD)</option>
+                        <option value="854x480">854×480 (SD)</option>
+                        <option value="640x360">640×360</option>
+                    </select>
+                </div>
+
+                <div class="config-item">
+                    <label>帧率 (FPS)</label>
+                    <select id="frameRate">
+                        <option value="24">24 FPS</option>
+                        <option value="30" selected>30 FPS</option>
+                        <option value="60">60 FPS</option>
+                    </select>
+                </div>
+
+                <div class="config-item">
+                    <label>输出格式</label>
+                    <select id="outputFormat">
+                        <option value="mp4">MP4</option>
+                        <option value="webm">WebM</option>
+                        <option value="gif">GIF</option>
+                    </select>
+                </div>
+            </div>
+
+            <button class="generate-btn" id="generateBtn">
+                🎥 生成视频
+            </button>
+
+            <div class="progress-bar" id="progressBar">
+                <div class="progress-track">
+                    <div class="progress-fill" id="progressFill"></div>
+                </div>
+                <div class="progress-text" id="progressText">处理中... 0%</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    class ImageTransitionEditor {
+        constructor() {
+            this.images = [];
+            this.currentImageIndex = 0;
+            this.isPlaying = false;
+            this.animationFrame = null;
+            this.currentEffect = 'fade';
+            this.imageDuration = 3000;
+            this.transitionDuration = 1000;
+            this.lastTime = 0;
+            this.currentTime = 0;
+
+            this.canvas = document.getElementById('previewCanvas');
+            this.ctx = this.canvas.getContext('2d');
+
+            this.init();
+        }
+
+        init() {
+            this.setupEventListeners();
+            this.setupCanvas();
+        }
+
+        setupCanvas() {
+            // 设置画布尺寸
+            const container = this.canvas.parentElement;
+            const rect = container.getBoundingClientRect();
+            this.canvas.width = 1280;
+            this.canvas.height = 720;
+        }
+
+        setupEventListeners() {
+            // 文件上传
+            const fileInput = document.getElementById('fileInput');
+            const uploadArea = document.querySelector('.upload-area');
+
+            fileInput.addEventListener('change', (e) => this.handleFileSelect(e));
+
+            // 拖拽上传
+            uploadArea.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                uploadArea.style.background = '#f0f0ff';
+            });
+
+            uploadArea.addEventListener('dragleave', () => {
+                uploadArea.style.background = 'white';
+            });
+
+            uploadArea.addEventListener('drop', (e) => {
+                e.preventDefault();
+                uploadArea.style.background = 'white';
+                const files = Array.from(e.dataTransfer.files);
+                this.loadImages(files);
+            });
+
+            // 转场效果选择
+            document.querySelectorAll('.effect-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    document.querySelectorAll('.effect-btn').forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+                    this.currentEffect = btn.dataset.effect;
+                    if (this.images.length > 0) {
+                        this.restartPreview();
+                    }
+                });
+            });
+
+            // 播放控制
+            document.getElementById('playBtn').addEventListener('click', () => this.play());
+            document.getElementById('pauseBtn').addEventListener('click', () => this.pause());
+            document.getElementById('stopBtn').addEventListener('click', () => this.stop());
+
+            // 参数调整
+            const durationSlider = document.getElementById('imageDuration');
+            durationSlider.addEventListener('input', (e) => {
+                this.imageDuration = e.target.value * 1000;
+                document.getElementById('durationValue').textContent = e.target.value;
+            });
+
+            const transitionSlider = document.getElementById('transitionDuration');
+            transitionSlider.addEventListener('input', (e) => {
+                this.transitionDuration = e.target.value * 1000;
+                document.getElementById('transitionValue').textContent = e.target.value;
+            });
+
+            // 生成视频
+            document.getElementById('generateBtn').addEventListener('click', () => this.generateVideo());
+        }
+
+        handleFileSelect(e) {
+            const files = Array.from(e.target.files);
+            this.loadImages(files);
+        }
+
+        loadImages(files) {
+            const imageFiles = files.filter(file => file.type.startsWith('image/'));
+
+            imageFiles.forEach(file => {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    const img = new Image();
+                    img.onload = () => {
+                        this.images.push({
+                            element: img,
+                            src: e.target.result,
+                            name: file.name
+                        });
+                        this.updateImageList();
+                        if (this.images.length === 1) {
+                            this.drawImage(0);
+                        }
+                    };
+                    img.src = e.target.result;
+                };
+                reader.readAsDataURL(file);
+            });
+        }
+
+        updateImageList() {
+            const imageList = document.getElementById('imageList');
+            imageList.innerHTML = '';
+
+            this.images.forEach((img, index) => {
+                const item = document.createElement('div');
+                item.className = 'image-item';
+                item.innerHTML = `
+                    <img src="${img.src}" alt="${img.name}">
+                    <button class="remove-btn" data-index="${index}">×</button>
+                `;
+
+                item.querySelector('.remove-btn').addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    this.removeImage(index);
+                });
+
+                item.addEventListener('click', () => {
+                    this.currentImageIndex = index;
+                    this.drawImage(index);
+                });
+
+                imageList.appendChild(item);
+            });
+        }
+
+        removeImage(index) {
+            this.images.splice(index, 1);
+            this.updateImageList();
+            if (this.currentImageIndex >= this.images.length) {
+                this.currentImageIndex = Math.max(0, this.images.length - 1);
+            }
+            if (this.images.length > 0) {
+                this.drawImage(this.currentImageIndex);
+            } else {
+                this.clearCanvas();
+            }
+        }
+
+        clearCanvas() {
+            this.ctx.fillStyle = '#000';
+            this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+        }
+
+        drawImage(index, alpha = 1) {
+            if (index < 0 || index >= this.images.length) return;
+
+            const img = this.images[index].element;
+            this.ctx.save();
+            this.ctx.globalAlpha = alpha;
+
+            // 保持图片比例并居中
+            const scale = Math.min(
+                this.canvas.width / img.width,
+                this.canvas.height / img.height
+            );
+
+            const w = img.width * scale;
+            const h = img.height * scale;
+            const x = (this.canvas.width - w) / 2;
+            const y = (this.canvas.height - h) / 2;
+
+            this.clearCanvas();
+            this.ctx.drawImage(img, x, y, w, h);
+            this.ctx.restore();
+        }
+
+        play() {
+            if (this.images.length < 2) {
+                alert('请至少上传2张图片');
+                return;
+            }
+
+            this.isPlaying = true;
+            this.lastTime = performance.now();
+            this.animate();
+        }
+
+        pause() {
+            this.isPlaying = false;
+            if (this.animationFrame) {
+                cancelAnimationFrame(this.animationFrame);
+            }
+        }
+
+        stop() {
+            this.isPlaying = false;
+            this.currentImageIndex = 0;
+            this.currentTime = 0;
+            if (this.animationFrame) {
+                cancelAnimationFrame(this.animationFrame);
+            }
+            if (this.images.length > 0) {
+                this.drawImage(0);
+            }
+        }
+
+        restartPreview() {
+            this.stop();
+            this.play();
+        }
+
+        animate(timestamp) {
+            if (!this.isPlaying) return;
+
+            if (!timestamp) timestamp = performance.now();
+            const deltaTime = timestamp - this.lastTime;
+            this.lastTime = timestamp;
+            this.currentTime += deltaTime;
+
+            const totalDuration = this.imageDuration + this.transitionDuration;
+            const cycleTime = this.currentTime % (totalDuration * this.images.length);
+            const currentCycle = Math.floor(cycleTime / totalDuration);
+            const cycleProgress = (cycleTime % totalDuration) / totalDuration;
+
+            this.currentImageIndex = currentCycle;
+            const nextIndex = (currentCycle + 1) % this.images.length;
+
+            // 判断是否在转场阶段
+            const transitionStart = this.imageDuration / totalDuration;
+
+            if (cycleProgress > transitionStart) {
+                // 转场阶段
+                const transitionProgress = (cycleProgress - transitionStart) / (1 - transitionStart);
+                this.applyTransition(this.currentImageIndex, nextIndex, transitionProgress);
+            } else {
+                // 显示当前图片
+                this.drawImage(this.currentImageIndex);
+            }
+
+            this.animationFrame = requestAnimationFrame((t) => this.animate(t));
+        }
+
+        applyTransition(fromIndex, toIndex, progress) {
+            const fromImg = this.images[fromIndex].element;
+            const toImg = this.images[toIndex].element;
+
+            this.clearCanvas();
+
+            switch (this.currentEffect) {
+                case 'fade':
+                    this.fadeTransition(fromImg, toImg, progress);
+                    break;
+                case 'gradient':
+                    this.gradientTransition(fromImg, toImg, progress);
+                    break;
+                case 'wipe-left':
+                    this.wipeTransition(fromImg, toImg, progress, 'left');
+                    break;
+                case 'wipe-right':
+                    this.wipeTransition(fromImg, toImg, progress, 'right');
+                    break;
+                case 'wipe-up':
+                    this.wipeTransition(fromImg, toImg, progress, 'up');
+                    break;
+                case 'wipe-down':
+                    this.wipeTransition(fromImg, toImg, progress, 'down');
+                    break;
+                case 'zoom-in':
+                    this.zoomTransition(fromImg, toImg, progress, 'in');
+                    break;
+                case 'zoom-out':
+                    this.zoomTransition(fromImg, toImg, progress, 'out');
+                    break;
+                case 'flip-h':
+                    this.flipTransition(fromImg, toImg, progress, 'horizontal');
+                    break;
+                case 'flip-v':
+                    this.flipTransition(fromImg, toImg, progress, 'vertical');
+                    break;
+                case 'fragment':
+                    this.fragmentTransition(fromImg, toImg, progress);
+                    break;
+                case 'rotate':
+                    this.rotateTransition(fromImg, toImg, progress);
+                    break;
+                default:
+                    this.fadeTransition(fromImg, toImg, progress);
+            }
+        }
+
+        fadeTransition(fromImg, toImg, progress) {
+            // 绘制渐隐的图片
+            this.ctx.save();
+            this.ctx.globalAlpha = 1 - progress;
+            this.drawImageCentered(fromImg);
+            this.ctx.restore();
+
+            // 绘制渐显的图片
+            this.ctx.save();
+            this.ctx.globalAlpha = progress;
+            this.drawImageCentered(toImg);
+            this.ctx.restore();
+        }
+
+        gradientTransition(fromImg, toImg, progress) {
+            // 先绘制目标图片
+            this.drawImageCentered(toImg);
+
+            // 创建渐变遮罩
+            this.ctx.save();
+            const gradient = this.ctx.createLinearGradient(
+                this.canvas.width * progress, 0,
+                this.canvas.width * (progress - 1), 0
+            );
+            gradient.addColorStop(0, 'rgba(0,0,0,0)');
+            gradient.addColorStop(0.5, 'rgba(0,0,0,0.5)');
+            gradient.addColorStop(1, 'rgba(0,0,0,1)');
+
+            this.ctx.globalCompositeOperation = 'destination-in';
+            this.ctx.fillStyle = gradient;
+            this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+
+            this.ctx.globalCompositeOperation = 'destination-over';
+            this.drawImageCentered(fromImg);
+            this.ctx.restore();
+        }
+
+        wipeTransition(fromImg, toImg, progress, direction) {
+            this.ctx.save();
+
+            // 先绘制目标图片
+            this.drawImageCentered(toImg);
+
+            // 设置擦除区域
+            this.ctx.globalCompositeOperation = 'destination-over';
+
+            switch (direction) {
+                case 'left':
+                    this.ctx.rect(
+                        this.canvas.width * progress, 0,
+                        this.canvas.width, this.canvas.height
+                    );
+                    break;
+                case 'right':
+                    this.ctx.rect(
+                        0, 0,
+                        this.canvas.width * (1 - progress), this.canvas.height
+                    );
+                    break;
+                case 'up':
+                    this.ctx.rect(
+                        0, this.canvas.height * progress,
+                        this.canvas.width, this.canvas.height
+                    );
+                    break;
+                case 'down':
+                    this.ctx.rect(
+                        0, 0,
+                        this.canvas.width, this.canvas.height * (1 - progress)
+                    );
+                    break;
+            }
+
+            this.ctx.clip();
+            this.drawImageCentered(fromImg);
+            this.ctx.restore();
+        }
+
+        zoomTransition(fromImg, toImg, progress, type) {
+            this.ctx.save();
+
+            if (type === 'in') {
+                // 放大切换
+                const scale1 = 1 + progress * 0.5;
+                this.ctx.globalAlpha = 1 - progress;
+                this.ctx.translate(this.canvas.width / 2, this.canvas.height / 2);
+                this.ctx.scale(scale1, scale1);
+                this.ctx.translate(-this.canvas.width / 2, -this.canvas.height / 2);
+                this.drawImageCentered(fromImg);
+
+                this.ctx.setTransform(1, 0, 0, 1, 0, 0);
+                const scale2 = 0.5 + progress * 0.5;
+                this.ctx.globalAlpha = progress;
+                this.ctx.translate(this.canvas.width / 2, this.canvas.height / 2);
+                this.ctx.scale(scale2, scale2);
+                this.ctx.translate(-this.canvas.width / 2, -this.canvas.height / 2);
+                this.drawImageCentered(toImg);
+            } else {
+                // 缩小切换
+                const scale1 = 1 - progress * 0.5;
+                this.ctx.globalAlpha = 1 - progress;
+                this.ctx.translate(this.canvas.width / 2, this.canvas.height / 2);
+                this.ctx.scale(scale1, scale1);
+                this.ctx.translate(-this.canvas.width / 2, -this.canvas.height / 2);
+                this.drawImageCentered(fromImg);
+
+                this.ctx.setTransform(1, 0, 0, 1, 0, 0);
+                this.ctx.globalAlpha = progress;
+                this.drawImageCentered(toImg);
+            }
+
+            this.ctx.restore();
+        }
+            flipTransition(fromImg, toImg, progress, direction) {
+                this.ctx.save();
+
+                const centerX = this.canvas.width / 2;
+                const centerY = this.canvas.height / 2;
+
+                if (direction === 'horizontal') {
+                    // 水平翻转
+                    if (progress < 0.5) {
+                        const scale = Math.cos(progress * Math.PI);
+                        this.ctx.translate(centerX, centerY);
+                        this.ctx.scale(scale, 1);
+                        this.ctx.translate(-centerX, -centerY);
+                        this.drawImageCentered(fromImg);
+                    } else {
+                        const scale = Math.cos((1 - progress) * Math.PI);
+                        this.ctx.translate(centerX, centerY);
+                        this.ctx.scale(scale, 1);
+                        this.ctx.translate(-centerX, -centerY);
+                        this.drawImageCentered(toImg);
+                    }
+                } else {
+                    // 垂直翻转
+                    if (progress < 0.5) {
+                        const scale = Math.cos(progress * Math.PI);
+                        this.ctx.translate(centerX, centerY);
+                        this.ctx.scale(1, scale);
+                        this.ctx.translate(-centerX, -centerY);
+                        this.drawImageCentered(fromImg);
+                    } else {
+                        const scale = Math.cos((1 - progress) * Math.PI);
+                        this.ctx.translate(centerX, centerY);
+                        this.ctx.scale(1, scale);
+                        this.ctx.translate(-centerX, -centerY);
+                        this.drawImageCentered(toImg);
+                    }
+                }
+
+                this.ctx.restore();
+            }
+
+            fragmentTransition(fromImg, toImg, progress) {
+                const rows = 8;
+                const cols = 8;
+                const cellWidth = this.canvas.width / cols;
+                const cellHeight = this.canvas.height / rows;
+
+                // 先绘制完整的目标图片
+                this.drawImageCentered(toImg);
+
+                // 绘制碎片化的源图片
+                this.ctx.save();
+
+                for (let row = 0; row < rows; row++) {
+                    for (let col = 0; col < cols; col++) {
+                        const delay = (row + col) / (rows + cols);
+                        const localProgress = Math.max(0, Math.min(1, (progress - delay * 0.5) * 2));
+
+                        if (localProgress < 1) {
+                            const x = col * cellWidth;
+                            const y = row * cellHeight;
+
+                            // 添加随机偏移和旋转
+                            const offsetX = (Math.random() - 0.5) * cellWidth * localProgress;
+                            const offsetY = (Math.random() - 0.5) * cellHeight * localProgress;
+                            const rotation = (Math.random() - 0.5) * Math.PI * localProgress;
+                            const scale = 1 - localProgress * 0.5;
+
+                            this.ctx.save();
+                            this.ctx.globalAlpha = 1 - localProgress;
+                            this.ctx.translate(x + cellWidth / 2 + offsetX, y + cellHeight / 2 + offsetY);
+                            this.ctx.rotate(rotation);
+                            this.ctx.scale(scale, scale);
+
+                            // 裁剪并绘制碎片
+                            this.ctx.drawImage(
+                                this.createImageFragment(fromImg, col, row, cols, rows),
+                                -cellWidth / 2, -cellHeight / 2,
+                                cellWidth, cellHeight
+                            );
+
+                            this.ctx.restore();
+                        }
+                    }
+                }
+
+                this.ctx.restore();
+            }
+
+            createImageFragment(img, col, row, cols, rows) {
+                const tempCanvas = document.createElement('canvas');
+                const tempCtx = tempCanvas.getContext('2d');
+
+                const cellWidth = img.width / cols;
+                const cellHeight = img.height / rows;
+
+                tempCanvas.width = cellWidth;
+                tempCanvas.height = cellHeight;
+
+                tempCtx.drawImage(
+                    img,
+                    col * cellWidth, row * cellHeight,
+                    cellWidth, cellHeight,
+                    0, 0,
+                    cellWidth, cellHeight
+                );
+
+                return tempCanvas;
+            }
+
+            rotateTransition(fromImg, toImg, progress) {
+                this.ctx.save();
+
+                const centerX = this.canvas.width / 2;
+                const centerY = this.canvas.height / 2;
+
+                // 旋转消失的图片
+                this.ctx.globalAlpha = 1 - progress;
+                this.ctx.translate(centerX, centerY);
+                this.ctx.rotate(progress * Math.PI / 2);
+                this.ctx.scale(1 - progress * 0.5, 1 - progress * 0.5);
+                this.ctx.translate(-centerX, -centerY);
+                this.drawImageCentered(fromImg);
+
+                // 旋转出现的图片
+                this.ctx.setTransform(1, 0, 0, 1, 0, 0);
+                this.ctx.globalAlpha = progress;
+                this.ctx.translate(centerX, centerY);
+                this.ctx.rotate(-Math.PI / 2 + progress * Math.PI / 2);
+                this.ctx.scale(progress, progress);
+                this.ctx.translate(-centerX, -centerY);
+                this.drawImageCentered(toImg);
+
+                this.ctx.restore();
+            }
+
+            drawImageCentered(img) {
+                const scale = Math.min(
+                    this.canvas.width / img.width,
+                    this.canvas.height / img.height
+                );
+
+                const w = img.width * scale;
+                const h = img.height * scale;
+                const x = (this.canvas.width - w) / 2;
+                const y = (this.canvas.height - h) / 2;
+
+                this.ctx.drawImage(img, x, y, w, h);
+            }
+
+            async generateVideo() {
+                if (this.images.length < 2) {
+                    alert('请至少上传2张图片才能生成视频');
+                    return;
+                }
+
+                const progressBar = document.getElementById('progressBar');
+                const progressFill = document.getElementById('progressFill');
+                const progressText = document.getElementById('progressText');
+                const generateBtn = document.getElementById('generateBtn');
+
+                // 获取配置参数
+                const resolution = document.getElementById('resolution').value.split('x');
+                const frameRate = parseInt(document.getElementById('frameRate').value);
+                const format = document.getElementById('outputFormat').value;
+
+                // 显示进度条
+                progressBar.classList.add('active');
+                generateBtn.disabled = true;
+
+                // 创建临时画布用于渲染
+                const renderCanvas = document.createElement('canvas');
+                renderCanvas.width = parseInt(resolution[0]);
+                renderCanvas.height = parseInt(resolution[1]);
+                const renderCtx = renderCanvas.getContext('2d');
+
+                // 准备帧数据
+                const frames = [];
+                const totalDuration = (this.imageDuration + this.transitionDuration) * this.images.length;
+                const totalFrames = Math.floor(totalDuration * frameRate / 1000);
+
+                // 模拟生成过程
+                for (let frame = 0; frame < totalFrames; frame++) {
+                    const timestamp = (frame / frameRate) * 1000;
+                    const progress = (frame / totalFrames) * 100;
+
+                    // 更新进度
+                    progressFill.style.width = progress + '%';
+                    progressText.textContent = `处理中... ${Math.round(progress)}%`;
+
+                    // 渲染当前帧
+                    await this.renderFrame(renderCanvas, renderCtx, timestamp);
+
+                    // 收集帧数据（这里仅作演示，实际需要使用专门的视频编码库）
+                    if (format === 'gif' && frame % 2 === 0) { // GIF采样
+                        frames.push(renderCanvas.toDataURL('image/png'));
+                    }
+
+                    // 让UI有时间更新
+                    if (frame % 10 === 0) {
+                        await new Promise(resolve => setTimeout(resolve, 0));
+                    }
+                }
+
+                // 生成视频文件（这里模拟生成）
+                progressText.textContent = '正在编码视频...';
+                await new Promise(resolve => setTimeout(resolve, 1000));
+
+                // 创建下载链接
+                if (format === 'gif') {
+                    // 简单的GIF演示（实际需要gif.js等库）
+                    this.createDownloadLink(frames[0], 'animation.gif');
+                } else {
+                    // 模拟视频生成
+                    const videoBlob = await this.createVideoBlob(frames, format);
+                    this.createDownloadLink(URL.createObjectURL(videoBlob), `video.${format}`);
+                }
+
+                // 完成
+                progressFill.style.width = '100%';
+                progressText.textContent = '视频生成完成！';
+                generateBtn.disabled = false;
+
+                setTimeout(() => {
+                    progressBar.classList.remove('active');
+                    progressFill.style.width = '0%';
+                }, 2000);
+            }
+
+            async renderFrame(canvas, ctx, timestamp) {
+                const totalDuration = this.imageDuration + this.transitionDuration;
+                const cycleTime = timestamp % (totalDuration * this.images.length);
+                const currentCycle = Math.floor(cycleTime / totalDuration);
+                const cycleProgress = (cycleTime % totalDuration) / totalDuration;
+
+                const currentIndex = currentCycle;
+                const nextIndex = (currentCycle + 1) % this.images.length;
+
+                // 清空画布
+                ctx.fillStyle = '#000';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+                // 临时替换画布和上下文
+                const originalCanvas = this.canvas;
+                const originalCtx = this.ctx;
+                this.canvas = canvas;
+                this.ctx = ctx;
+
+                const transitionStart = this.imageDuration / totalDuration;
+
+                if (cycleProgress > transitionStart) {
+                    const transitionProgress = (cycleProgress - transitionStart) / (1 - transitionStart);
+                    this.applyTransition(currentIndex, nextIndex, transitionProgress);
+                } else {
+                    this.drawImage(currentIndex);
+                }
+
+                // 恢复原始画布和上下文
+                this.canvas = originalCanvas;
+                this.ctx = originalCtx;
+            }
+
+            async createVideoBlob(frames, format) {
+                // 这里应该使用实际的视频编码库（如ffmpeg.js）
+                // 现在只是创建一个模拟的Blob
+                const dummyData = new Uint8Array([0, 1, 2, 3, 4, 5]);
+                return new Blob([dummyData], { type: `video/${format}` });
+            }
+
+            createDownloadLink(url, filename) {
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = filename;
+                a.style.display = 'none';
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+            }
+        }
+
+        // 初始化编辑器
+        const editor = new ImageTransitionEditor();
+
+        // 添加一些额外的UI交互
+        document.addEventListener('DOMContentLoaded', () => {
+            // 添加快捷键支持
+            document.addEventListener('keydown', (e) => {
+                if (e.code === 'Space' && e.target.tagName !== 'INPUT') {
+                    e.preventDefault();
+                    if (editor.isPlaying) {
+                        editor.pause();
+                    } else {
+                        editor.play();
+                    }
+                }
+
+                if (e.code === 'Escape') {
+                    editor.stop();
+                }
+            });
+
+            // 添加提示信息
+            const tips = [
+                '空格键：播放/暂停',
+                'ESC键：停止播放',
+                '支持拖拽上传图片',
+                '可以调整转场时长获得不同效果'
+            ];
+
+            // 创建提示容器
+            const tipsContainer = document.createElement('div');
+            tipsContainer.style.cssText = `
+                position: fixed;
+                bottom: 20px;
+                right: 20px;
+                background: rgba(0, 0, 0, 0.8);
+                color: white;
+                padding: 15px;
+                border-radius: 10px;
+                font-size: 14px;
+                max-width: 250px;
+                transition: opacity 0.3s;
+                z-index: 1000;
+            `;
+
+            let currentTip = 0;
+            const showTip = () => {
+                tipsContainer.textContent = '💡 ' + tips[currentTip];
+                tipsContainer.style.opacity = '1';
+                document.body.appendChild(tipsContainer);
+
+                setTimeout(() => {
+                    tipsContainer.style.opacity = '0';
+                    setTimeout(() => {
+                        if (tipsContainer.parentNode) {
+                            tipsContainer.parentNode.removeChild(tipsContainer);
+                        }
+                        currentTip = (currentTip + 1) % tips.length;
+                        setTimeout(showTip, 5000);
+                    }, 300);
+                }, 3000);
+            };
+
+            // 延迟显示第一个提示
+            setTimeout(showTip, 2000);
+        });
+
+        // 添加加载动画
+        window.addEventListener('load', () => {
+            const loader = document.createElement('div');
+            loader.style.cssText = `
+                position: fixed;
+                top: 0;
+                left: 0;
+                right: 0;
+                bottom: 0;
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                z-index: 9999;
+                transition: opacity 0.5s;
+            `;
+
+            loader.innerHTML = `
+                <div style="text-align: center; color: white;">
+                    <h2 style="font-size: 3rem; margin-bottom: 20px;">🎬</h2>
+                    <p style="font-size: 1.5rem;">加载中...</p>
+                </div>
+            `;
+
+            document.body.appendChild(loader);
+
+            setTimeout(() => {
+                loader.style.opacity = '0';
+                setTimeout(() => {
+                    document.body.removeChild(loader);
+                }, 500);
+            }, 500);
+        });
+</script>
+</body>
+</html>

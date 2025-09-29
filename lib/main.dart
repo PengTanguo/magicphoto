@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:get/get.dart';
 import 'controllers/main_controller.dart';
-import 'controllers/image_controller.dart';
 import 'widgets/sidebar_widget.dart';
 import 'pages/image_processing_page.dart';
 import 'pages/audio_processing_page.dart';

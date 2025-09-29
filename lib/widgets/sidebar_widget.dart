@@ -136,6 +136,7 @@ class SidebarWidget extends StatelessWidget {
               child: Column(
                 children: [
                   _buildNavItem(
+                    context: context,
                     controller: controller,
                     pageType: PageType.image,
                     icon: Icons.image_rounded,
@@ -144,6 +145,7 @@ class SidebarWidget extends StatelessWidget {
                   ),
                   SizedBox(height: 8.h),
                   _buildNavItem(
+                    context: context,
                     controller: controller,
                     pageType: PageType.video,
                     icon: Icons.videocam_rounded,
@@ -152,6 +154,7 @@ class SidebarWidget extends StatelessWidget {
                   ),
                   SizedBox(height: 8.h),
                   _buildNavItem(
+                    context: context,
                     controller: controller,
                     pageType: PageType.audio,
                     icon: Icons.audiotrack_rounded,
@@ -256,6 +259,7 @@ class SidebarWidget extends StatelessWidget {
   }
   
   Widget _buildNavItem({
+    required BuildContext context,
     required MainController controller,
     required PageType pageType,
     required IconData icon,
@@ -264,7 +268,6 @@ class SidebarWidget extends StatelessWidget {
   }) {
     return Obx(() {
       final isSelected = controller.isCurrentPage(pageType);
-      final isDark = Theme.of(context).brightness == Brightness.dark;
       
       return GestureDetector(
         onTap: () => controller.switchToPage(pageType),

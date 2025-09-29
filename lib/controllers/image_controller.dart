@@ -5,7 +5,7 @@ import 'package:image_picker/image_picker.dart';
 
 class ImageController extends GetxController with GetSingleTickerProviderStateMixin {
   // 图片相关
-  final Rx<File?> selectedImage = Rx<File?>(null);
+  final Rx<XFile?> selectedImage = Rx<XFile?>(null);
   final ImagePicker _picker = ImagePicker();
   
   // 动画控制器
@@ -104,8 +104,9 @@ class ImageController extends GetxController with GetSingleTickerProviderStateMi
       );
       
       if (image != null) {
-        selectedImage.value = File(image.path);
+        selectedImage.value = image;
         resetAnimations();
+        Get.snackbar('成功', '图片选择成功！');
       }
     } catch (e) {
       Get.snackbar('错误', '选择图片失败: $e');
@@ -123,8 +124,9 @@ class ImageController extends GetxController with GetSingleTickerProviderStateMi
       );
       
       if (image != null) {
-        selectedImage.value = File(image.path);
+        selectedImage.value = image;
         resetAnimations();
+        Get.snackbar('成功', '拍照成功！');
       }
     } catch (e) {
       Get.snackbar('错误', '拍照失败: $e');

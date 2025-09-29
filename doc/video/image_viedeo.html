@@ -1,0 +1,1289 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>图片转推拉镜头视频生成器</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .main-container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .header {
+            text-align: center;
+            color: white;
+            margin-bottom: 30px;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
+        }
+
+        .header p {
+            font-size: 1.1em;
+            opacity: 0.9;
+        }
+
+        .content-wrapper {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        .panel {
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+
+        .panel-title {
+            font-size: 1.3em;
+            color: #333;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #f0f0f0;
+        }
+
+        /* 上传区域 */
+        .upload-section {
+            grid-column: span 2;
+        }
+
+        .upload-area {
+            border: 3px dashed #764ba2;
+            border-radius: 10px;
+            padding: 40px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+            background: #fafafa;
+        }
+
+        .upload-area:hover {
+            background: #f0f0f0;
+            border-color: #667eea;
+        }
+
+        .upload-area.dragover {
+            background: #e8eaf6;
+            border-color: #3f51b5;
+        }
+
+        .upload-icon {
+            font-size: 48px;
+            margin-bottom: 15px;
+        }
+
+        #fileInput {
+            display: none;
+        }
+
+        /* 预览区域 */
+        .preview-container {
+            position: relative;
+            background: #000;
+            border-radius: 10px;
+            overflow: hidden;
+            margin-bottom: 20px;
+            height: 400px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .preview-canvas {
+            max-width: 100%;
+            max-height: 100%;
+        }
+
+        .preview-controls {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            margin-top: 15px;
+        }
+
+        /* 参数控制面板 */
+        .parameter-group {
+            margin-bottom: 25px;
+        }
+
+        .parameter-group label {
+            display: block;
+            color: #555;
+            font-weight: 500;
+            margin-bottom: 8px;
+        }
+
+        .parameter-row {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            margin-bottom: 10px;
+        }
+
+        .parameter-row input[type="range"] {
+            flex: 1;
+            height: 6px;
+            border-radius: 3px;
+            background: #e0e0e0;
+            outline: none;
+            -webkit-appearance: none;
+        }
+
+        .parameter-row input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: #764ba2;
+            cursor: pointer;
+        }
+
+        .parameter-value {
+            min-width: 80px;
+            padding: 5px 10px;
+            background: #f5f5f5;
+            border-radius: 5px;
+            text-align: center;
+            font-weight: 500;
+        }
+
+        .input-group {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .input-group input[type="number"] {
+            width: 100px;
+            padding: 8px;
+            border: 2px solid #e0e0e0;
+            border-radius: 5px;
+            font-size: 14px;
+        }
+
+        select {
+            padding: 8px 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 5px;
+            font-size: 14px;
+            background: white;
+            cursor: pointer;
+            width: 100%;
+        }
+
+        /* 关键帧编辑器 */
+        .keyframe-editor {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 20px;
+        }
+
+        .keyframe-list {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+            overflow-x: auto;
+            padding: 10px 0;
+        }
+
+        .keyframe-item {
+            background: white;
+            padding: 10px;
+            border-radius: 5px;
+            border: 2px solid #e0e0e0;
+            min-width: 120px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .keyframe-item.active {
+            border-color: #764ba2;
+            background: #f3e5f5;
+        }
+
+        .keyframe-item-header {
+            font-size: 12px;
+            color: #666;
+            margin-bottom: 5px;
+        }
+
+        .keyframe-item-value {
+            font-weight: bold;
+            color: #333;
+        }
+
+        /* 按钮样式 */
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 15px;
+            font-weight: 500;
+            transition: all 0.3s;
+            color: white;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+
+        .btn-secondary {
+            background: #6c757d;
+        }
+
+        .btn-success {
+            background: #28a745;
+        }
+
+        .btn-danger {
+            background: #dc3545;
+        }
+
+        .btn-warning {
+            background: #ffc107;
+            color: #333;
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .btn-group {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        /* 进度条 */
+        .progress-container {
+            margin-top: 20px;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 10px;
+            display: none;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 30px;
+            background: #e0e0e0;
+            border-radius: 15px;
+            overflow: hidden;
+            margin-bottom: 10px;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+            transition: width 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 500;
+        }
+
+        .progress-text {
+            text-align: center;
+            color: #666;
+            margin-top: 10px;
+        }
+
+        /* 预设模板 */
+        .preset-templates {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+            gap: 10px;
+            margin-top: 15px;
+        }
+
+        .preset-item {
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            cursor: pointer;
+            text-align: center;
+            transition: all 0.3s;
+            border: 2px solid transparent;
+        }
+
+        .preset-item:hover {
+            background: #e9ecef;
+            border-color: #764ba2;
+        }
+
+        .preset-icon {
+            font-size: 24px;
+            margin-bottom: 5px;
+        }
+
+        .preset-name {
+            font-size: 13px;
+            color: #333;
+            font-weight: 500;
+        }
+
+        /* 焦点选择器 */
+        .focus-selector {
+            position: relative;
+            width: 100%;
+            height: 200px;
+            background: #f0f0f0;
+            border-radius: 8px;
+            margin-top: 10px;
+            cursor: crosshair;
+            overflow: hidden;
+        }
+
+        .focus-point {
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #764ba2;
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+            pointer-events: none;
+        }
+
+        .focus-selector img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            opacity: 0.5;
+        }
+
+        /* 响应式 */
+        @media (max-width: 768px) {
+            .content-wrapper {
+                grid-template-columns: 1fr;
+            }
+
+            .upload-section {
+                grid-column: span 1;
+            }
+        }
+
+        /* 输出格式选项 */
+        .output-options {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+            margin-top: 15px;
+        }
+
+        /* 时间轴 */
+        .timeline {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 20px;
+        }
+
+        .timeline-track {
+            position: relative;
+            height: 60px;
+            background: #e0e0e0;
+            border-radius: 5px;
+            margin: 10px 0;
+        }
+
+        .timeline-marker {
+            position: absolute;
+            width: 2px;
+            height: 100%;
+            background: #764ba2;
+            pointer-events: none;
+        }
+
+        /* 加载动画 */
+        .spinner {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255,255,255,.3);
+            border-radius: 50%;
+            border-top-color: white;
+            animation: spin 1s ease-in-out infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+<div class="main-container">
+    <div class="header">
+        <h1>🎬 图片转推拉镜头视频生成器</h1>
+        <p>将静态图片转换为具有电影级推拉镜头效果的视频</p>
+    </div>
+
+    <!-- 上传区域 -->
+    <div class="panel upload-section">
+        <div class="panel-title">📸 选择图片</div>
+        <div class="upload-area" id="uploadArea">
+            <div class="upload-icon">📁</div>
+            <div>点击选择或拖拽图片到此处</div>
+            <div style="color: #999; font-size: 14px; margin-top: 10px;">支持 JPG、PNG、GIF 格式</div>
+            <input type="file" id="fileInput" accept="image/*">
+        </div>
+    </div>
+
+    <div class="content-wrapper">
+        <!-- 左侧：预览区域 -->
+        <div class="panel">
+            <div class="panel-title">👁️ 效果预览</div>
+            <div class="preview-container">
+                <canvas id="previewCanvas" class="preview-canvas"></canvas>
+            </div>
+            <div class="preview-controls">
+                <button class="btn btn-secondary" onclick="playPreview()">▶️ 播放预览</button>
+                <button class="btn btn-secondary" onclick="pausePreview()">⏸️ 暂停</button>
+                <button class="btn btn-secondary" onclick="resetPreview()">⏹️ 重置</button>
+            </div>
+
+            <!-- 时间轴 -->
+            <div class="timeline">
+                <label>时间轴</label>
+                <div class="timeline-track">
+                    <div class="timeline-marker" id="timelineMarker"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 右侧：参数控制 -->
+        <div class="panel">
+            <div class="panel-title">⚙️ 参数设置</div>
+
+            <!-- 预设模板 -->
+            <div class="parameter-group">
+                <label>快速预设</label>
+                <div class="preset-templates">
+                    <div class="preset-item" onclick="applyPreset('slowZoomIn')">
+                        <div class="preset-icon">🔍</div>
+                        <div class="preset-name">缓慢推进</div>
+                    </div>
+                    <div class="preset-item" onclick="applyPreset('slowZoomOut')">
+                        <div class="preset-icon">🔎</div>
+                        <div class="preset-name">缓慢拉远</div>
+                    </div>
+                    <div class="preset-item" onclick="applyPreset('kenBurns')">
+                        <div class="preset-icon">🎥</div>
+                        <div class="preset-name">Ken Burns</div>
+                    </div>
+                    <div class="preset-item" onclick="applyPreset('dramatic')">
+                        <div class="preset-icon">🎭</div>
+                        <div class="preset-name">戏剧效果</div>
+                    </div>
+                    <div class="preset-item" onclick="applyPreset('pulse')">
+                        <div class="preset-icon">💗</div>
+                        <div class="preset-name">脉冲效果</div>
+                    </div>
+                    <div class="preset-item" onclick="applyPreset('vertigo')">
+                        <div class="preset-icon">🌀</div>
+                        <div class="preset-name">眩晕效果</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 基础参数 -->
+            <div class="parameter-group">
+                <label>视频时长（秒）</label>
+                <div class="parameter-row">
+                    <input type="range" id="duration" min="1" max="30" value="5"
+                           oninput="updateValue('duration', this.value)">
+                    <div class="parameter-value" id="durationValue">5秒</div>
+                </div>
+            </div>
+
+            <div class="parameter-group">
+                <label>起始缩放</label>
+                <div class="parameter-row">
+                    <input type="range" id="startZoom" min="50" max="200" value="100"
+                           oninput="updateValue('startZoom', this.value)">
+                    <div class="parameter-value" id="startZoomValue">100%</div>
+                </div>
+            </div>
+
+            <div class="parameter-group">
+                <label>结束缩放</label>
+                <div class="parameter-row">
+                    <input type="range" id="endZoom" min="50" max="200" value="150"
+                           oninput="updateValue('endZoom', this.value)">
+                    <div class="parameter-value" id="endZoomValue">150%</div>
+                </div>
+            </div>
+
+            <div class="parameter-group">
+                <label>缓动效果</label>
+                <select id="easing">
+                    <option value="linear">线性</option>
+                    <option value="easeIn">缓入</option>
+                    <option value="easeOut">缓出</option>
+                    <option value="easeInOut" selected>缓入缓出</option>
+                    <option value="easeInQuad">二次缓入</option>
+                    <option value="easeOutQuad">二次缓出</option>
+                    <option value="easeInOutQuad">二次缓入缓出</option>
+                    <option value="easeInCubic">三次缓入</option>
+                    <option value="easeOutCubic">三次缓出</option>
+                    <option value="easeInOutCubic">三次缓入缓出</option>
+                </select>
+            </div>
+
+            <!-- 高级参数 -->
+            <div class="parameter-group">
+                <label>焦点位置</label>
+                <div class="focus-selector" id="focusSelector">
+                    <div class="focus-point" id="focusPoint" style="left: 50%; top: 50%;"></div>
+                    <img id="focusThumbnail" style="display: none;">
+                </div>
+            </div>
+
+            <div class="parameter-group">
+                <label>水平移动</label>
+                <div class="parameter-row">
+                    <input type="range" id="panX" min="-50" max="50" value="0"
+                           oninput="updateValue('panX', this.value)">
+                    <div class="parameter-value" id="panXValue">0px</div>
+                </div>
+            </div>
+
+            <div class="parameter-group">
+                <label>垂直移动</label>
+                <div class="parameter-row">
+                    <input type="range" id="panY" min="-50" max="50" value="0"
+                           oninput="updateValue('panY', this.value)">
+                    <div class="parameter-value" id="panYValue">0px</div>
+                </div>
+            </div>
+
+            <div class="parameter-group">
+                <label>旋转角度</label>
+                <div class="parameter-row">
+                    <input type="range" id="rotation" min="-30" max="30" value="0"
+                           oninput="updateValue('rotation', this.value)">
+                    <div class="parameter-value" id="rotationValue">0°</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 输出设置面板 -->
+    <div class="panel">
+        <div class="panel-title">📹 输出设置</div>
+
+        <div class="output-options">
+            <div class="parameter-group">
+                <label>分辨率</label>
+                <select id="resolution">
+                    <option value="1920x1080">1080p (1920×1080)</option>
+                    <option value="1280x720" selected>720p (1280×720)</option>
+                    <option value="854x480">480p (854×480)</option>
+                    <option value="640x360">360p (640×360)</option>
+                    <option value="3840x2160">4K (3840×2160)</option>
+                    <option value="custom">自定义</option>
+                </select>
+            </div>
+
+            <div class="parameter-group">
+                <label>帧率 (FPS)</label>
+                <select id="framerate">
+                    <option value="24">24 fps</option>
+                    <option value="30" selected>30 fps</option>
+                    <option value="60">60 fps</option>
+                    <option value="120">120 fps</option>
+                </select>
+            </div>
+
+            <div class="parameter-group">
+                <label>输出格式</label>
+                <select id="format">
+                    <option value="webm" selected>WebM</option>
+                    <option value="mp4">MP4 (需要编码器)</option>
+                    <option value="gif">GIF 动画</option>
+                </select>
+            </div>
+
+            <div class="parameter-group">
+                <label>视频质量</label>
+                <select id="quality">
+                    <option value="low">低质量 (快速)</option>
+                    <option value="medium" selected>中等质量</option>
+                    <option value="high">高质量</option>
+                    <option value="ultra">超高质量 (慢速)</option>
+                </select>
+            </div>
+        </div>
+
+        <!-- 关键帧编辑器 -->
+        <div class="keyframe-editor">
+            <label>关键帧编辑</label>
+            <div class="keyframe-list" id="keyframeList">
+                <div class="keyframe-item active">
+                    <div class="keyframe-item-header">开始</div>
+                    <div class="keyframe-item-value">0s - 100%</div>
+                </div>
+                <div class="keyframe-item">
+                    <div class="keyframe-item-header">结束</div>
+                    <div class="keyframe-item-value">5s - 150%</div>
+                </div>
+            </div>
+            <button class="btn btn-secondary" onclick="addKeyframe()">➕ 添加关键帧</button>
+        </div>
+
+        <!-- 生成按钮 -->
+        <div class="btn-group" style="margin-top: 20px;">
+            <button class="btn btn-primary" onclick="generateVideo()" style="flex: 1;">
+                🎬 生成视频
+            </button>
+            <button class="btn btn-warning" onclick="downloadFrame()">
+                📷 导出当前帧
+            </button>
+        </div>
+
+        <!-- 进度条 -->
+        <div class="progress-container" id="progressContainer">
+            <div class="progress-bar">
+                <div class="progress-fill" id="progressFill">0%</div>
+            </div>
+            <div class="progress-text" id="progressText">准备生成视频...</div>
+        </div>
+    </div>
+</div>
+
+<!-- 引入 MediaRecorder API 用于视频录制 -->
+<script>
+    // 全局变量
+    let uploadedImage = null;
+    let canvas = document.getElementById('previewCanvas');
+    let ctx = canvas.getContext('2d');
+    let isPlaying = false;
+    let currentFrame = 0;
+    let animationId = null;
+    let mediaRecorder = null;
+    let recordedChunks = [];
+
+    // 参数对象
+    let params = {
+        duration: 5,
+        startZoom: 100,
+        endZoom: 150,
+        easing: 'easeInOut',
+        focusX: 0.5,
+        focusY: 0.5,
+        panX: 0,
+        panY: 0,
+        rotation: 0,
+        framerate: 30,
+        resolution: '1280x720',
+        format: 'webm',
+        quality: 'medium'
+    };
+
+    // 关键帧数组
+    let keyframes = [
+        { time: 0, zoom: 100, x: 0, y: 0, rotation: 0 },
+        { time: 5, zoom: 150, x: 0, y: 0, rotation: 0 }
+    ];
+
+    // 文件上传处理
+    const uploadArea = document.getElementById('uploadArea');
+    const fileInput = document.getElementById('fileInput');
+
+    uploadArea.addEventListener('click', () => {
+        fileInput.click();
+    });
+
+    fileInput.addEventListener('change', handleFileSelect);
+
+    uploadArea.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        uploadArea.classList.add('dragover');
+    });
+
+    uploadArea.addEventListener('dragleave', () => {
+        uploadArea.classList.remove('dragover');
+    });
+
+    uploadArea.addEventListener('drop', (e) => {
+        e.preventDefault();
+        uploadArea.classList.remove('dragover');
+        const file = e.dataTransfer.files[0];
+        if (file && file.type.startsWith('image/')) {
+            loadImage(file);
+        }
+    });
+
+    function handleFileSelect(e) {
+        const file = e.target.files[0];
+        if (file && file.type.startsWith('image/')) {
+            loadImage(file);
+        }
+    }
+
+    function loadImage(file) {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            const img = new Image();
+            img.onload = () => {
+                uploadedImage = img;
+                document.getElementById('focusThumbnail').src = e.target.result;
+                document.getElementById('focusThumbnail').style.display = 'block';
+                initCanvas();
+                drawFrame(0);
+            };
+            img.src = e.target.result;
+        };
+        reader.readAsDataURL(file);
+    }
+
+    function initCanvas() {
+        const [width, height] = params.resolution.split('x').map(Number);
+        canvas.width = width;
+        canvas.height = height;
+    }
+
+    // 缓动函数
+    const easingFunctions = {
+        linear: t => t,
+        easeIn: t => t * t,
+        easeOut: t => t * (2 - t),
+        easeInOut: t => t < .5 ? 2 * t * t : -1 + (4 - 2 * t) * t,
+        easeInQuad: t => t * t,
+        easeOutQuad: t => t * (2 - t),
+        easeInOutQuad: t => t < .5 ? 2 * t * t : -1 + (4 - 2 * t) * t,
+        easeInCubic: t => t * t * t,
+        easeOutCubic: t => (--t) * t * t + 1,
+        easeInOutCubic: t => t < .5 ? 4 * t * t * t : (t - 1) * (2 * t - 2) * (2 * t - 2) + 1
+    };
+
+    // 绘制帧
+    function drawFrame(progress) {
+        if (!uploadedImage) return;
+
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        // 应用缓动
+        const easedProgress = easingFunctions[params.easing](progress);
+
+        // 计算当前值
+        const currentZoom = params.startZoom + (params.endZoom - params.startZoom) * easedProgress;
+        const currentPanX = params.panX * easedProgress;
+        const currentPanY = params.panY * easedProgress;
+        const currentRotation = params.rotation * easedProgress;
+
+        // 保存状态
+        ctx.save();
+
+        // 设置变换
+        ctx.translate(canvas.width / 2, canvas.height / 2);
+        ctx.rotate(currentRotation * Math.PI / 180);
+        ctx.scale(currentZoom / 100, currentZoom / 100);
+        ctx.translate(currentPanX, currentPanY);
+
+        // 绘制图片
+        const scale = Math.max(canvas.width / uploadedImage.width,
+                               canvas.height / uploadedImage.height);
+        const w = uploadedImage.width * scale;
+        const h = uploadedImage.height * scale;
+        ctx.drawImage(uploadedImage, -w/2, -h/2, w, h);
+
+        // 恢复状态
+        ctx.restore();
+
+        // 更新时间轴标记
+        updateTimelineMarker(progress);
+    }
+
+    // 预览控制
+    function playPreview() {
+        if (!uploadedImage || isPlaying) return;
+
+        isPlaying = true;
+        const startTime = performance.now();
+        const duration = params.duration * 1000;
+
+        function animate(currentTime) {
+            const elapsed = currentTime - startTime;
+            const progress = Math.min(elapsed / duration, 1);
+
+            drawFrame(progress);
+
+            if (progress < 1 && isPlaying) {
+                animationId = requestAnimationFrame(animate);
+            } else {
+                isPlaying = false;
+                if (progress >= 1) {
+                    setTimeout(resetPreview, 500);
+                }
+            }
+        }
+
+        animationId = requestAnimationFrame(animate);
+    }
+
+    function pausePreview() {
+        isPlaying = false;
+        if (animationId) {
+            cancelAnimationFrame(animationId);
+        }
+    }
+
+            function resetPreview() {
+            pausePreview();
+            drawFrame(0);
+            updateTimelineMarker(0);
+        }
+
+        // 更新时间轴标记
+        function updateTimelineMarker(progress) {
+            const marker = document.getElementById('timelineMarker');
+            marker.style.left = (progress * 100) + '%';
+        }
+
+        // 参数更新
+        function updateValue(param, value) {
+            params[param] = parseFloat(value);
+
+            // 更新显示
+            const displayElement = document.getElementById(param + 'Value');
+            if (displayElement) {
+                let displayValue = value;
+                if (param.includes('Zoom')) displayValue = value + '%';
+                else if (param === 'duration') displayValue = value + '秒';
+                else if (param === 'rotation') displayValue = value + '°';
+                else if (param === 'panX' || param === 'panY') displayValue = value + 'px';
+                displayElement.textContent = displayValue;
+            }
+
+            // 实时预览
+            if (uploadedImage && !isPlaying) {
+                drawFrame(0);
+            }
+
+            // 更新关键帧显示
+            updateKeyframeDisplay();
+        }
+
+        // 焦点选择器
+        const focusSelector = document.getElementById('focusSelector');
+        focusSelector.addEventListener('click', (e) => {
+            const rect = focusSelector.getBoundingClientRect();
+            const x = (e.clientX - rect.left) / rect.width;
+            const y = (e.clientY - rect.top) / rect.height;
+
+            params.focusX = x;
+            params.focusY = y;
+
+            const focusPoint = document.getElementById('focusPoint');
+            focusPoint.style.left = (x * 100) + '%';
+            focusPoint.style.top = (y * 100) + '%';
+        });
+
+        // 预设模板
+        const presets = {
+            slowZoomIn: {
+                duration: 8,
+                startZoom: 100,
+                endZoom: 180,
+                easing: 'easeInOut',
+                panX: 0,
+                panY: 0,
+                rotation: 0
+            },
+            slowZoomOut: {
+                duration: 8,
+                startZoom: 150,
+                endZoom: 80,
+                easing: 'easeInOut',
+                panX: 0,
+                panY: 0,
+                rotation: 0
+            },
+            kenBurns: {
+                duration: 10,
+                startZoom: 100,
+                endZoom: 130,
+                easing: 'easeInOutCubic',
+                panX: 30,
+                panY: -20,
+                rotation: 2
+            },
+            dramatic: {
+                duration: 5,
+                startZoom: 80,
+                endZoom: 200,
+                easing: 'easeInCubic',
+                panX: 0,
+                panY: 0,
+                rotation: -5
+            },
+            pulse: {
+                duration: 3,
+                startZoom: 90,
+                endZoom: 110,
+                easing: 'easeInOut',
+                panX: 0,
+                panY: 0,
+                rotation: 0
+            },
+            vertigo: {
+                duration: 6,
+                startZoom: 150,
+                endZoom: 80,
+                easing: 'easeInOutQuad',
+                panX: 0,
+                panY: -30,
+                rotation: 10
+            }
+        };
+
+        function applyPreset(presetName) {
+            const preset = presets[presetName];
+            if (!preset) return;
+
+            // 应用预设值
+            Object.keys(preset).forEach(key => {
+                params[key] = preset[key];
+
+                // 更新UI控件
+                const element = document.getElementById(key);
+                if (element) {
+                    element.value = preset[key];
+                    updateValue(key, preset[key]);
+                }
+            });
+
+            // 重新绘制
+            if (uploadedImage) {
+                drawFrame(0);
+            }
+        }
+
+        // 关键帧管理
+        function addKeyframe() {
+            const time = prompt('输入关键帧时间（秒）：', '2.5');
+            if (time === null) return;
+
+            const zoom = prompt('输入缩放比例（%）：', '125');
+            if (zoom === null) return;
+
+            keyframes.push({
+                time: parseFloat(time),
+                zoom: parseFloat(zoom),
+                x: params.panX,
+                y: params.panY,
+                rotation: params.rotation
+            });
+
+            keyframes.sort((a, b) => a.time - b.time);
+            updateKeyframeDisplay();
+        }
+
+        function updateKeyframeDisplay() {
+            const list = document.getElementById('keyframeList');
+            list.innerHTML = keyframes.map((kf, index) => `
+                <div class="keyframe-item ${index === 0 ? 'active' : ''}" onclick="selectKeyframe(${index})">
+                    <div class="keyframe-item-header">${index === 0 ? '开始' : index === keyframes.length - 1 ? '结束' : '关键帧 ' + index}</div>
+                    <div class="keyframe-item-value">${kf.time}s - ${kf.zoom}%</div>
+                </div>
+            `).join('');
+        }
+
+        function selectKeyframe(index) {
+            const kf = keyframes[index];
+            if (!kf) return;
+
+            // 跳转到该关键帧
+            const progress = kf.time / params.duration;
+            drawFrame(progress);
+
+            // 高亮选中的关键帧
+            document.querySelectorAll('.keyframe-item').forEach(item => {
+                item.classList.remove('active');
+            });
+            document.querySelectorAll('.keyframe-item')[index].classList.add('active');
+        }
+
+        // 生成视频
+        async function generateVideo() {
+            if (!uploadedImage) {
+                alert('请先上传图片！');
+                return;
+            }
+
+            const progressContainer = document.getElementById('progressContainer');
+            const progressFill = document.getElementById('progressFill');
+            const progressText = document.getElementById('progressText');
+
+            progressContainer.style.display = 'block';
+            progressText.textContent = '正在准备生成视频...';
+
+            try {
+                // 设置画布大小
+                const [width, height] = params.resolution.split('x').map(Number);
+                canvas.width = width;
+                canvas.height = height;
+
+                // 检查浏览器支持
+                const stream = canvas.captureStream(params.framerate);
+
+                // 选择编码器
+                let mimeType = 'video/webm;codecs=vp9';
+                if (params.format === 'mp4') {
+                    // 注意：大多数浏览器不支持直接录制MP4
+                    if (MediaRecorder.isTypeSupported('video/mp4')) {
+                        mimeType = 'video/mp4';
+                    } else {
+                        alert('浏览器不支持MP4格式，将使用WebM格式');
+                        mimeType = 'video/webm;codecs=vp9';
+                    }
+                }
+
+                // 设置比特率
+                const bitrates = {
+                    low: 1000000,      // 1 Mbps
+                    medium: 2500000,   // 2.5 Mbps
+                    high: 5000000,     // 5 Mbps
+                    ultra: 10000000    // 10 Mbps
+                };
+
+                recordedChunks = [];
+                mediaRecorder = new MediaRecorder(stream, {
+                    mimeType: mimeType,
+                    videoBitsPerSecond: bitrates[params.quality]
+                });
+
+                mediaRecorder.ondataavailable = (event) => {
+                    if (event.data.size > 0) {
+                        recordedChunks.push(event.data);
+                    }
+                };
+
+                mediaRecorder.onstop = () => {
+                    // 创建视频文件
+                    const blob = new Blob(recordedChunks, {
+                        type: mimeType.split(';')[0]
+                    });
+
+                    // 下载视频
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `zoom_effect_${Date.now()}.${params.format === 'mp4' ? 'mp4' : 'webm'}`;
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    URL.revokeObjectURL(url);
+
+                    progressContainer.style.display = 'none';
+                    alert('视频生成完成！');
+                };
+
+                // 开始录制
+                mediaRecorder.start();
+                progressText.textContent = '正在录制视频...';
+
+                // 渲染视频帧
+                const totalFrames = params.duration * params.framerate;
+                let currentFrame = 0;
+
+                function renderFrame() {
+                    if (currentFrame < totalFrames) {
+                        const progress = currentFrame / totalFrames;
+                        drawFrame(progress);
+
+                        // 更新进度
+                        const percentage = Math.round(progress * 100);
+                        progressFill.style.width = percentage + '%';
+                        progressFill.textContent = percentage + '%';
+                        progressText.textContent = `正在生成视频... (帧 ${currentFrame + 1}/${totalFrames})`;
+
+                        currentFrame++;
+                        setTimeout(renderFrame, 1000 / params.framerate);
+                    } else {
+                        // 录制完成
+                        mediaRecorder.stop();
+                        progressText.textContent = '正在保存视频...';
+                    }
+                }
+
+                renderFrame();
+
+            } catch (error) {
+                console.error('生成视频失败：', error);
+                alert('生成视频失败，请检查浏览器是否支持相关功能。');
+                progressContainer.style.display = 'none';
+            }
+        }
+
+        // 导出当前帧
+        function downloadFrame() {
+            if (!uploadedImage) {
+                alert('请先上传图片！');
+                return;
+            }
+
+            canvas.toBlob((blob) => {
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `frame_${Date.now()}.png`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+            });
+        }
+
+        // 如果需要GIF支持，可以使用gif.js库
+        async function generateGIF() {
+            if (!uploadedImage) {
+                alert('请先上传图片！');
+                return;
+            }
+
+            alert('GIF生成功能需要额外的库支持。建议使用WebM格式，然后使用外部工具转换为GIF。');
+
+            // 如果集成gif.js库，可以这样实现：
+            /*
+            const gif = new GIF({
+                workers: 2,
+                quality: 10,
+                width: canvas.width,
+                height: canvas.height
+            });
+
+            const totalFrames = params.duration * 10; // GIF通常使用较低的帧率
+
+            for (let i = 0; i < totalFrames; i++) {
+                const progress = i / totalFrames;
+                drawFrame(progress);
+                gif.addFrame(canvas, { delay: 100 }); // 100ms per frame = 10fps
+            }
+
+            gif.on('finished', (blob) => {
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `zoom_effect_${Date.now()}.gif`;
+                a.click();
+                URL.revokeObjectURL(url);
+            });
+
+            gif.render();
+            */
+        }
+
+        // 添加批量处理功能
+        function batchProcess() {
+            // 可以扩展为批量处理多张图片
+            alert('批量处理功能可以通过循环处理多个文件来实现。');
+        }
+
+        // 初始化
+        document.addEventListener('DOMContentLoaded', () => {
+            updateKeyframeDisplay();
+
+            // 添加键盘快捷键
+            document.addEventListener('keydown', (e) => {
+                if (e.code === 'Space' && uploadedImage) {
+                    e.preventDefault();
+                    if (isPlaying) {
+                        pausePreview();
+                    } else {
+                        playPreview();
+                    }
+                }
+            });
+        });
+
+        // 添加实时预览更新
+        ['duration', 'startZoom', 'endZoom', 'panX', 'panY', 'rotation'].forEach(param => {
+            const element = document.getElementById(param);
+            if (element) {
+                element.addEventListener('input', () => {
+                    if (uploadedImage && !isPlaying) {
+                        drawFrame(0);
+                    }
+                });
+            }
+        });
+
+        // 监听分辨率变化
+        document.getElementById('resolution').addEventListener('change', (e) => {
+            if (e.target.value === 'custom') {
+                const width = prompt('输入宽度：', '1280');
+                const height = prompt('输入高度：', '720');
+                if (width && height) {
+                    params.resolution = `${width}x${height}`;
+                } else {
+                    e.target.value = '1280x720';
+                    params.resolution = '1280x720';
+                }
+            } else {
+                params.resolution = e.target.value;
+            }
+
+            if (uploadedImage) {
+                initCanvas();
+                drawFrame(0);
+            }
+        });
+
+        // 监听其他参数变化
+        document.getElementById('framerate').addEventListener('change', (e) => {
+            params.framerate = parseInt(e.target.value);
+        });
+
+        document.getElementById('format').addEventListener('change', (e) => {
+            params.format = e.target.value;
+            if (e.target.value === 'gif') {
+                document.getElementById('framerate').value = '10';
+                params.framerate = 10;
+            }
+        });
+
+        document.getElementById('quality').addEventListener('change', (e) => {
+            params.quality = e.target.value;
+        });
+
+        document.getElementById('easing').addEventListener('change', (e) => {
+            params.easing = e.target.value;
+            if (uploadedImage && !isPlaying) {
+                drawFrame(0);
+            }
+        });
+</script>
+</body>
+</html>
+
+

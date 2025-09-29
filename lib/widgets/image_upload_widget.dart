@@ -1,4 +1,3 @@
-import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:get/get.dart';
@@ -13,95 +12,119 @@ class ImageUploadWidget extends StatelessWidget {
     
     return Obx(() {
       if (controller.selectedImage.value == null) {
-        return _buildUploadPlaceholder(controller);
+        return _buildUploadPlaceholder(context, controller);
       } else {
-        return _buildImageDisplay(controller);
+        return _buildImageDisplay(context, controller);
       }
     });
   }
   
-  Widget _buildUploadPlaceholder(ImageController controller) {
+  Widget _buildUploadPlaceholder(BuildContext context, ImageController controller) {
     return Container(
-      width: 300.w,
-      height: 180.h,
+      width: 400.w,
+      height: 280.h,
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: [
-            Colors.grey[50]!,
-            Colors.grey[100]!,
+            Theme.of(context).colorScheme.surface,
+            Theme.of(context).colorScheme.surface.withOpacity(0.8),
           ],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
-        borderRadius: BorderRadius.circular(20.r),
+        borderRadius: BorderRadius.circular(32.r),
         border: Border.all(
-          color: Colors.grey[200]!,
+          color: Theme.of(context).colorScheme.outline.withOpacity(0.2),
           width: 2,
         ),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.05),
+            blurRadius: 20,
+            offset: const Offset(0, 8),
+          ),
+          BoxShadow(
+            color: Theme.of(context).colorScheme.primary.withOpacity(0.05),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
         ],
       ),
       child: Padding(
-        padding: EdgeInsets.all(16.w),
+        padding: EdgeInsets.all(24.w),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           mainAxisSize: MainAxisSize.min,
           children: [
             Container(
-              padding: EdgeInsets.all(16.w),
+              padding: EdgeInsets.all(25.w),
               decoration: BoxDecoration(
-                color: const Color(0xFF6366F1).withOpacity(0.1),
-                borderRadius: BorderRadius.circular(40.r),
+                gradient: LinearGradient(
+                  colors: [
+                    Theme.of(context).colorScheme.primary.withOpacity(0.1),
+                    Theme.of(context).colorScheme.secondary.withOpacity(0.05),
+                  ],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                borderRadius: BorderRadius.circular(28.r),
+                border: Border.all(
+                  color: Theme.of(context).colorScheme.primary.withOpacity(0.2),
+                  width: 2,
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
+                    blurRadius: 15,
+                    offset: const Offset(0, 6),
+                  ),
+                ],
               ),
               child: Icon(
                 Icons.cloud_upload_rounded,
                 size: 40.sp,
-                color: const Color(0xFF6366F1),
+                color: Theme.of(context).colorScheme.primary,
               ),
-            ),
-            SizedBox(height: 12.h),
-            Text(
-              '选择图片开始创作',
-              style: TextStyle(
-                fontSize: 16.sp,
-                color: Colors.grey[700],
-                fontWeight: FontWeight.w600,
-              ),
-              textAlign: TextAlign.center,
-            ),
-            SizedBox(height: 4.h),
-            Text(
-              '支持相册选择和拍照',
-              style: TextStyle(
-                fontSize: 12.sp,
-                color: Colors.grey[500],
-              ),
-              textAlign: TextAlign.center,
             ),
             SizedBox(height: 16.h),
+            Text(
+              '选择图片开始创作',
+              style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                color: Theme.of(context).colorScheme.onSurface,
+                fontWeight: FontWeight.w700,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            SizedBox(height: 6.h),
+            Text(
+              '支持相册选择和拍照，让您的图片瞬间生动起来',
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+                fontWeight: FontWeight.w500,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            SizedBox(height: 3.h),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
                 Expanded(
                   child: _buildUploadButton(
+                    context: context,
                     icon: Icons.photo_library_rounded,
                     label: '相册',
                     onTap: controller.pickImage,
-                    color: const Color(0xFF3B82F6),
+                    color: Theme.of(context).colorScheme.primary,
                   ),
                 ),
-                SizedBox(width: 12.w),
+                SizedBox(width: 2.w),
                 Expanded(
                   child: _buildUploadButton(
+                    context: context,
                     icon: Icons.camera_alt_rounded,
                     label: '拍照',
                     onTap: controller.takePhoto,
-                    color: const Color(0xFF10B981),
+                    color: Theme.of(context).colorScheme.secondary,
                   ),
                 ),
               ],
@@ -113,6 +136,7 @@ class ImageUploadWidget extends StatelessWidget {
   }
   
   Widget _buildUploadButton({
+    required BuildContext context,
     required IconData icon,
     required String label,
     required VoidCallback onTap,
@@ -131,14 +155,19 @@ class ImageUploadWidget extends StatelessWidget {
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
           ),
-          borderRadius: BorderRadius.circular(12.r),
+          borderRadius: BorderRadius.circular(16.r),
           border: Border.all(
-            color: color.withOpacity(0.2),
+            color: color.withOpacity(0.3),
             width: 1.5,
           ),
           boxShadow: [
             BoxShadow(
-              color: color.withOpacity(0.1),
+              color: color.withOpacity(0.2),
+              blurRadius: 8,
+              offset: const Offset(0, 3),
+            ),
+            BoxShadow(
+              color: Colors.black.withOpacity(0.05),
               blurRadius: 6,
               offset: const Offset(0, 2),
             ),
@@ -148,10 +177,21 @@ class ImageUploadWidget extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             Container(
-              padding: EdgeInsets.all(6.w),
+              padding: EdgeInsets.all(8.w),
               decoration: BoxDecoration(
-                color: color.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(8.r),
+                gradient: LinearGradient(
+                  colors: [
+                    color.withOpacity(0.2),
+                    color.withOpacity(0.1),
+                  ],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                borderRadius: BorderRadius.circular(12.r),
+                border: Border.all(
+                  color: color.withOpacity(0.3),
+                  width: 1,
+                ),
               ),
               child: Icon(icon, color: color, size: 20.sp),
             ),
@@ -161,7 +201,8 @@ class ImageUploadWidget extends StatelessWidget {
               style: TextStyle(
                 color: color,
                 fontSize: 12.sp,
-                fontWeight: FontWeight.w600,
+                fontWeight: FontWeight.w700,
+                letterSpacing: 0.3,
               ),
             ),
           ],
@@ -170,23 +211,23 @@ class ImageUploadWidget extends StatelessWidget {
     );
   }
   
-  Widget _buildImageDisplay(ImageController controller) {
+  Widget _buildImageDisplay(BuildContext context, ImageController controller) {
     return Container(
-      width: 300.w,
-      height: 180.h,
+      width: 400.w,
+      height: 280.h,
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(20.r),
+        borderRadius: BorderRadius.circular(32.r),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.15),
-            blurRadius: 20,
-            offset: const Offset(0, 8),
+            blurRadius: 30,
+            offset: const Offset(0, 12),
             spreadRadius: 0,
           ),
           BoxShadow(
-            color: const Color(0xFF6366F1).withOpacity(0.1),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
+            color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
+            blurRadius: 20,
+            offset: const Offset(0, 6),
           ),
         ],
       ),
@@ -194,29 +235,62 @@ class ImageUploadWidget extends StatelessWidget {
         borderRadius: BorderRadius.circular(20.r),
         child: Stack(
           children: [
-            // 图片显示
-            Positioned.fill(
-              child: Obx(() {
-                return Transform(
-                  alignment: Alignment.center,
-                  transform: Matrix4.identity()
-                    ..scale(controller.zoomValue.value)
-                    ..translate(
-                      controller.panValue.value.dx * 100,
-                      controller.panValue.value.dy * 100,
-                    )
-                    ..rotateZ(controller.rotationValue.value)
-                    ..rotateX(controller.tiltValue.value)
-                    ..rotateY(controller.orbitValue.value * 0.5),
-                  child: Image.file(
-                    controller.selectedImage.value!,
-                    fit: BoxFit.cover,
-                    width: double.infinity,
-                    height: double.infinity,
-                  ),
-                );
-              }),
-            ),
+                // 图片显示
+                Positioned.fill(
+                  child: Obx(() {
+                    return Transform(
+                      alignment: Alignment.center,
+                      transform: Matrix4.identity()
+                        ..scale(controller.zoomValue.value)
+                        ..translate(
+                          controller.panValue.value.dx * 100,
+                          controller.panValue.value.dy * 100,
+                        )
+                        ..rotateZ(controller.rotationValue.value)
+                        ..rotateX(controller.tiltValue.value)
+                        ..rotateY(controller.orbitValue.value * 0.5),
+                      child: Image.network(
+                        controller.selectedImage.value!.path,
+                        fit: BoxFit.cover,
+                        width: double.infinity,
+                        height: double.infinity,
+                        loadingBuilder: (context, child, loadingProgress) {
+                          if (loadingProgress == null) return child;
+                          return Center(
+                            child: CircularProgressIndicator(
+                              value: loadingProgress.expectedTotalBytes != null
+                                  ? loadingProgress.cumulativeBytesLoaded /
+                                      loadingProgress.expectedTotalBytes!
+                                  : null,
+                            ),
+                          );
+                        },
+                        errorBuilder: (context, error, stackTrace) {
+                          return Center(
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(
+                                  Icons.error_outline,
+                                  size: 48.sp,
+                                  color: Colors.red,
+                                ),
+                                SizedBox(height: 8.h),
+                                Text(
+                                  '图片加载失败',
+                                  style: TextStyle(
+                                    color: Colors.red,
+                                    fontSize: 14.sp,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          );
+                        },
+                      ),
+                    );
+                  }),
+                ),
             
             // 重新选择按钮
             Positioned(

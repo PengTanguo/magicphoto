@@ -11,21 +11,32 @@ class ControlPanelWidget extends StatelessWidget {
     final ImageController controller = Get.find<ImageController>();
     
     return Container(
-      padding: EdgeInsets.all(20.w),
+      padding: EdgeInsets.all(32.w),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(24.r),
+        gradient: LinearGradient(
+          colors: [
+            Theme.of(context).colorScheme.surface,
+            Theme.of(context).colorScheme.surface.withOpacity(0.8),
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(32.r),
+        border: Border.all(
+          color: Theme.of(context).colorScheme.outline.withOpacity(0.2),
+          width: 1,
+        ),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.08),
-            blurRadius: 20,
-            offset: const Offset(0, 4),
+            blurRadius: 30,
+            offset: const Offset(0, 12),
             spreadRadius: 0,
           ),
           BoxShadow(
-            color: const Color(0xFF6366F1).withOpacity(0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 2),
+            color: Theme.of(context).colorScheme.primary.withOpacity(0.05),
+            blurRadius: 20,
+            offset: const Offset(0, 6),
           ),
         ],
       ),
@@ -35,29 +46,37 @@ class ControlPanelWidget extends StatelessWidget {
           Row(
             children: [
               Container(
-                padding: EdgeInsets.all(8.w),
+                padding: EdgeInsets.all(12.w),
                 decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                    colors: [Color(0xFF10B981), Color(0xFF059669)],
+                  gradient: LinearGradient(
+                    colors: [
+                      Theme.of(context).colorScheme.primary,
+                      Theme.of(context).colorScheme.secondary,
+                    ],
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
                   ),
-                  borderRadius: BorderRadius.circular(12.r),
+                  borderRadius: BorderRadius.circular(16.r),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Theme.of(context).colorScheme.primary.withOpacity(0.3),
+                      blurRadius: 12,
+                      offset: const Offset(0, 6),
+                    ),
+                  ],
                 ),
                 child: Icon(
                   Icons.control_camera_rounded,
                   color: Colors.white,
-                  size: 20.sp,
+                  size: 24.sp,
                 ),
               ),
-              SizedBox(width: 12.w),
+              SizedBox(width: 16.w),
               Text(
-                '动画控制',
-                style: TextStyle(
-                  fontSize: 20.sp,
+                '动画控制中心',
+                style: Theme.of(context).textTheme.headlineLarge?.copyWith(
+                  color: Theme.of(context).colorScheme.onSurface,
                   fontWeight: FontWeight.w700,
-                  color: Colors.black87,
-                  letterSpacing: 0.3,
                 ),
               ),
             ],
@@ -65,12 +84,12 @@ class ControlPanelWidget extends StatelessWidget {
           SizedBox(height: 16.h),
           
           // 动画状态显示
-          _buildAnimationStatus(controller),
+          _buildAnimationStatus(context, controller),
           
           SizedBox(height: 16.h),
           
           // 控制按钮
-          _buildControlButtons(controller),
+          _buildControlButtons(context, controller),
           
           SizedBox(height: 16.h),
           
@@ -81,84 +100,87 @@ class ControlPanelWidget extends StatelessWidget {
     );
   }
   
-  Widget _buildAnimationStatus(ImageController controller) {
+  Widget _buildAnimationStatus(BuildContext context, ImageController controller) {
     return Obx(() {
       return Container(
-        padding: EdgeInsets.all(16.w),
+        padding: EdgeInsets.all(20.w),
         decoration: BoxDecoration(
           gradient: controller.isAnimating.value 
               ? LinearGradient(
                   colors: [
-                    const Color(0xFF3B82F6).withOpacity(0.1),
-                    const Color(0xFF1D4ED8).withOpacity(0.05),
+                    Theme.of(context).colorScheme.primary.withOpacity(0.15),
+                    Theme.of(context).colorScheme.secondary.withOpacity(0.08),
                   ],
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                 )
               : LinearGradient(
                   colors: [
-                    Colors.grey[50]!,
-                    Colors.grey[100]!,
+                    Theme.of(context).colorScheme.surface.withOpacity(0.5),
+                    Theme.of(context).colorScheme.surface.withOpacity(0.3),
                   ],
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                 ),
-          borderRadius: BorderRadius.circular(16.r),
+          borderRadius: BorderRadius.circular(20.r),
           border: Border.all(
             color: controller.isAnimating.value 
-                ? const Color(0xFF3B82F6).withOpacity(0.3)
-                : Colors.grey.withOpacity(0.2),
-            width: 1.5,
+                ? Theme.of(context).colorScheme.primary.withOpacity(0.4)
+                : Theme.of(context).colorScheme.outline.withOpacity(0.2),
+            width: 2,
           ),
           boxShadow: [
             if (controller.isAnimating.value)
               BoxShadow(
-                color: const Color(0xFF3B82F6).withOpacity(0.1),
-                blurRadius: 8,
-                offset: const Offset(0, 2),
+                color: Theme.of(context).colorScheme.primary.withOpacity(0.2),
+                blurRadius: 20,
+                offset: const Offset(0, 8),
               ),
+            BoxShadow(
+              color: Colors.black.withOpacity(0.05),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+            ),
           ],
         ),
         child: Row(
           children: [
             Container(
-              width: 12.w,
-              height: 12.h,
+              width: 16.w,
+              height: 16.h,
               decoration: BoxDecoration(
                 color: controller.isAnimating.value 
-                    ? const Color(0xFF3B82F6) 
-                    : Colors.grey[400],
+                    ? Theme.of(context).colorScheme.primary
+                    : Theme.of(context).colorScheme.outline.withOpacity(0.5),
                 shape: BoxShape.circle,
                 boxShadow: controller.isAnimating.value ? [
                   BoxShadow(
-                    color: const Color(0xFF3B82F6).withOpacity(0.3),
-                    blurRadius: 4,
-                    spreadRadius: 1,
+                    color: Theme.of(context).colorScheme.primary.withOpacity(0.4),
+                    blurRadius: 8,
+                    spreadRadius: 2,
                   ),
                 ] : null,
               ),
             ),
-            SizedBox(width: 12.w),
+            SizedBox(width: 16.w),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
                     controller.isAnimating.value ? '动画进行中' : '动画已停止',
-                    style: TextStyle(
-                      fontSize: 16.sp,
-                      fontWeight: FontWeight.w700,
+                    style: Theme.of(context).textTheme.headlineMedium?.copyWith(
                       color: controller.isAnimating.value 
-                          ? const Color(0xFF3B82F6) 
-                          : Colors.grey[600],
+                          ? Theme.of(context).colorScheme.primary
+                          : Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+                      fontWeight: FontWeight.w700,
                     ),
                   ),
                   if (controller.isAnimating.value && controller.currentAnimationType.value.isNotEmpty)
                     Text(
                       _getAnimationTypeText(controller.currentAnimationType.value),
-                      style: TextStyle(
-                        fontSize: 13.sp,
-                        color: Colors.grey[600],
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                         fontWeight: FontWeight.w500,
                       ),
                     ),
@@ -167,15 +189,19 @@ class ControlPanelWidget extends StatelessWidget {
             ),
             if (controller.isAnimating.value)
               Container(
-                width: 20.w,
-                height: 20.h,
+                width: 24.w,
+                height: 24.h,
                 decoration: BoxDecoration(
-                  color: const Color(0xFF3B82F6).withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(10.r),
+                  color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(12.r),
+                  border: Border.all(
+                    color: Theme.of(context).colorScheme.primary.withOpacity(0.3),
+                    width: 1,
+                  ),
                 ),
                 child: CircularProgressIndicator(
-                  strokeWidth: 2.5,
-                  valueColor: AlwaysStoppedAnimation<Color>(const Color(0xFF3B82F6)),
+                  strokeWidth: 3,
+                  valueColor: AlwaysStoppedAnimation<Color>(Theme.of(context).colorScheme.primary),
                 ),
               ),
           ],
@@ -184,7 +210,7 @@ class ControlPanelWidget extends StatelessWidget {
     });
   }
   
-  Widget _buildControlButtons(ImageController controller) {
+  Widget _buildControlButtons(BuildContext context, ImageController controller) {
     return Obx(() {
       return Row(
         children: [
@@ -192,24 +218,32 @@ class ControlPanelWidget extends StatelessWidget {
             child: Container(
               decoration: BoxDecoration(
                 gradient: controller.isAnimating.value 
-                    ? const LinearGradient(
-                        colors: [Color(0xFFEF4444), Color(0xFFDC2626)],
+                    ? LinearGradient(
+                        colors: [
+                          Theme.of(context).colorScheme.error,
+                          Theme.of(context).colorScheme.error.withOpacity(0.8),
+                        ],
                         begin: Alignment.topLeft,
                         end: Alignment.bottomRight,
                       )
                     : LinearGradient(
-                        colors: [Colors.grey[400]!, Colors.grey[500]!],
+                        colors: [
+                          Theme.of(context).colorScheme.primary,
+                          Theme.of(context).colorScheme.secondary,
+                        ],
                         begin: Alignment.topLeft,
                         end: Alignment.bottomRight,
                       ),
-                borderRadius: BorderRadius.circular(16.r),
-                boxShadow: controller.isAnimating.value ? [
+                borderRadius: BorderRadius.circular(20.r),
+                boxShadow: [
                   BoxShadow(
-                    color: const Color(0xFFEF4444).withOpacity(0.3),
-                    blurRadius: 8,
-                    offset: const Offset(0, 4),
+                    color: (controller.isAnimating.value 
+                        ? Theme.of(context).colorScheme.error
+                        : Theme.of(context).colorScheme.primary).withOpacity(0.3),
+                    blurRadius: 12,
+                    offset: const Offset(0, 6),
                   ),
-                ] : null,
+                ],
               ),
               child: ElevatedButton.icon(
                 onPressed: controller.isAnimating.value 
@@ -217,64 +251,71 @@ class ControlPanelWidget extends StatelessWidget {
                     : null,
                 icon: Icon(
                   controller.isAnimating.value ? Icons.stop_rounded : Icons.play_arrow_rounded,
-                  size: 20.sp,
+                  size: 22.sp,
                 ),
                 label: Text(
                   controller.isAnimating.value ? '停止动画' : '开始动画',
-                  style: TextStyle(
-                    fontSize: 15.sp,
-                    fontWeight: FontWeight.w600,
+                  style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w700,
                   ),
                 ),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.transparent,
                   shadowColor: Colors.transparent,
                   foregroundColor: Colors.white,
-                  padding: EdgeInsets.symmetric(vertical: 16.h),
+                  padding: EdgeInsets.symmetric(vertical: 20.h),
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16.r),
+                    borderRadius: BorderRadius.circular(20.r),
                   ),
                 ),
               ),
             ),
           ),
-          SizedBox(width: 12.w),
+          SizedBox(width: 16.w),
           Expanded(
             child: Container(
               decoration: BoxDecoration(
                 gradient: LinearGradient(
                   colors: [
-                    Colors.grey[100]!,
-                    Colors.grey[200]!,
+                    Theme.of(context).colorScheme.surface.withOpacity(0.8),
+                    Theme.of(context).colorScheme.surface.withOpacity(0.6),
                   ],
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                 ),
-                borderRadius: BorderRadius.circular(16.r),
+                borderRadius: BorderRadius.circular(20.r),
                 border: Border.all(
-                  color: Colors.grey[300]!,
-                  width: 1.5,
+                  color: Theme.of(context).colorScheme.outline.withOpacity(0.3),
+                  width: 2,
                 ),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.05),
+                    blurRadius: 8,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
               ),
               child: OutlinedButton.icon(
                 onPressed: () {
                   controller.resetAnimations();
                 },
-                icon: Icon(Icons.refresh_rounded, size: 20.sp),
+                icon: Icon(Icons.refresh_rounded, size: 22.sp),
                 label: Text(
                   '重置', 
-                  style: TextStyle(
-                    fontSize: 15.sp,
-                    fontWeight: FontWeight.w600,
+                  style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                    color: Theme.of(context).colorScheme.onSurface,
+                    fontWeight: FontWeight.w700,
                   ),
                 ),
                 style: OutlinedButton.styleFrom(
                   backgroundColor: Colors.transparent,
-                  foregroundColor: Colors.grey[700],
+                  foregroundColor: Theme.of(context).colorScheme.onSurface,
                   side: BorderSide.none,
-                  padding: EdgeInsets.symmetric(vertical: 16.h),
+                  padding: EdgeInsets.symmetric(vertical: 20.h),
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16.r),
+                    borderRadius: BorderRadius.circular(20.r),
                   ),
                 ),
               ),

@@ -90,11 +90,11 @@ class ImageProcessingPage extends StatelessWidget {
                         SizedBox(height: 12.h),
                         Row(
                           children: [
-                            _buildFeatureChip('实时预览', Icons.visibility_rounded),
+                            _buildFeatureChip(context, '实时预览', Icons.visibility_rounded),
                             SizedBox(width: 8.w),
-                            _buildFeatureChip('专业特效', Icons.auto_awesome_rounded),
+                            _buildFeatureChip(context, '专业特效', Icons.auto_awesome_rounded),
                             SizedBox(width: 8.w),
-                            _buildFeatureChip('一键导出', Icons.download_rounded),
+                            _buildFeatureChip(context, '一键导出', Icons.download_rounded),
                           ],
                         ),
                       ],
@@ -213,35 +213,40 @@ class ImageProcessingPage extends StatelessWidget {
             SizedBox(height: 20.h),
             
             // 使用说明
-            _buildUsageInstructions(),
+            _buildUsageInstructions(context),
           ],
         ),
       ),
     );
   }
   
-  Widget _buildUsageInstructions() {
+  Widget _buildUsageInstructions(BuildContext context) {
     return Container(
       width: double.infinity,
-      padding: EdgeInsets.all(20.w),
+      padding: EdgeInsets.all(32.w),
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: [
-            Colors.white,
-            Colors.grey[50]!,
+            Theme.of(context).colorScheme.surface,
+            Theme.of(context).colorScheme.surface.withOpacity(0.8),
           ],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
-        borderRadius: BorderRadius.circular(24.r),
+        borderRadius: BorderRadius.circular(32.r),
         border: Border.all(
-          color: Colors.grey[200]!,
+          color: Theme.of(context).colorScheme.outline.withOpacity(0.2),
           width: 1.5,
         ),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.05),
-            blurRadius: 15,
+            blurRadius: 20,
+            offset: const Offset(0, 8),
+          ),
+          BoxShadow(
+            color: Theme.of(context).colorScheme.primary.withOpacity(0.05),
+            blurRadius: 10,
             offset: const Offset(0, 4),
           ),
         ],
@@ -252,44 +257,90 @@ class ImageProcessingPage extends StatelessWidget {
           Row(
             children: [
               Container(
-                padding: EdgeInsets.all(8.w),
+                padding: EdgeInsets.all(12.w),
                 decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                    colors: [Color(0xFF3B82F6), Color(0xFF1D4ED8)],
+                  gradient: LinearGradient(
+                    colors: [
+                      Theme.of(context).colorScheme.primary,
+                      Theme.of(context).colorScheme.secondary,
+                    ],
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
                   ),
-                  borderRadius: BorderRadius.circular(12.r),
+                  borderRadius: BorderRadius.circular(16.r),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Theme.of(context).colorScheme.primary.withOpacity(0.3),
+                      blurRadius: 8,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
                 ),
                 child: Icon(
-                  Icons.info_rounded,
-                  size: 20.sp,
+                  Icons.help_outline_rounded,
+                  size: 24.sp,
                   color: Colors.white,
                 ),
               ),
-              SizedBox(width: 12.w),
+              SizedBox(width: 16.w),
               Text(
-                '使用说明',
-                style: TextStyle(
-                  fontSize: 18.sp,
+                '使用指南',
+                style: Theme.of(context).textTheme.headlineLarge?.copyWith(
+                  color: Theme.of(context).colorScheme.onSurface,
                   fontWeight: FontWeight.w700,
-                  color: Colors.black87,
-                  letterSpacing: 0.3,
                 ),
               ),
             ],
           ),
+          SizedBox(height: 20.h),
+          _buildInstructionItem(context, '1. 点击"相册"或"拍照"选择图片'),
+          _buildInstructionItem(context, '2. 选择您想要的镜头运动效果'),
+          _buildInstructionItem(context, '3. 使用手动控制微调效果参数'),
+          _buildInstructionItem(context, '4. 点击"重置"恢复原始状态'),
           SizedBox(height: 16.h),
-          _buildInstructionItem('1. 点击"相册"或"拍照"选择图片'),
-          _buildInstructionItem('2. 选择您想要的镜头运动效果'),
-          _buildInstructionItem('3. 使用手动控制微调效果参数'),
-          _buildInstructionItem('4. 点击"重置"恢复原始状态'),
+          Container(
+            padding: EdgeInsets.all(16.w),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [
+                  Theme.of(context).colorScheme.primary.withOpacity(0.1),
+                  Theme.of(context).colorScheme.secondary.withOpacity(0.05),
+                ],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              borderRadius: BorderRadius.circular(16.r),
+              border: Border.all(
+                color: Theme.of(context).colorScheme.primary.withOpacity(0.2),
+                width: 1,
+              ),
+            ),
+            child: Row(
+              children: [
+                Icon(
+                  Icons.lightbulb_outline_rounded,
+                  size: 20.sp,
+                  color: Theme.of(context).colorScheme.primary,
+                ),
+                SizedBox(width: 12.w),
+                Expanded(
+                  child: Text(
+                    '提示：您可以通过手动控制面板实时调整效果参数，获得最佳视觉效果',
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color: Theme.of(context).colorScheme.onSurface.withOpacity(0.8),
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
         ],
       ),
     );
   }
   
-  Widget _buildFeatureChip(String text, IconData icon) {
+  Widget _buildFeatureChip(BuildContext context, String text, IconData icon) {
     return Container(
       padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 6.h),
       decoration: BoxDecoration(
@@ -363,7 +414,7 @@ class ImageProcessingPage extends StatelessWidget {
     );
   }
 
-  Widget _buildInstructionItem(String text) {
+  Widget _buildInstructionItem(BuildContext context, String text) {
     return Padding(
       padding: EdgeInsets.only(bottom: 8.h),
       child: Row(
