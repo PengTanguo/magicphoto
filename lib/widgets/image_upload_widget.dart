@@ -22,7 +22,7 @@ class ImageUploadWidget extends StatelessWidget {
   Widget _buildUploadPlaceholder(BuildContext context, ImageController controller) {
     return Container(
       width: 400.w,
-      height: 280.h,
+      height: 320.h,
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: [
@@ -51,13 +51,13 @@ class ImageUploadWidget extends StatelessWidget {
         ],
       ),
       child: Padding(
-        padding: EdgeInsets.all(24.w),
+        padding: EdgeInsets.all(20.w),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           mainAxisSize: MainAxisSize.min,
           children: [
             Container(
-              padding: EdgeInsets.all(25.w),
+              padding: EdgeInsets.all(20.w),
               decoration: BoxDecoration(
                 gradient: LinearGradient(
                   colors: [
@@ -67,44 +67,44 @@ class ImageUploadWidget extends StatelessWidget {
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                 ),
-                borderRadius: BorderRadius.circular(28.r),
+                borderRadius: BorderRadius.circular(24.r),
                 border: Border.all(
                   color: Theme.of(context).colorScheme.primary.withOpacity(0.2),
-                  width: 2,
+                  width: 1.5,
                 ),
                 boxShadow: [
                   BoxShadow(
                     color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
-                    blurRadius: 15,
-                    offset: const Offset(0, 6),
+                    blurRadius: 12,
+                    offset: const Offset(0, 4),
                   ),
                 ],
               ),
               child: Icon(
                 Icons.cloud_upload_rounded,
-                size: 40.sp,
+                size: 36.sp,
                 color: Theme.of(context).colorScheme.primary,
               ),
             ),
-            SizedBox(height: 16.h),
+            SizedBox(height: 12.h),
             Text(
               '选择图片开始创作',
-              style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                 color: Theme.of(context).colorScheme.onSurface,
                 fontWeight: FontWeight.w700,
               ),
               textAlign: TextAlign.center,
             ),
-            SizedBox(height: 6.h),
+            SizedBox(height: 4.h),
             Text(
               '支持相册选择和拍照，让您的图片瞬间生动起来',
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
                 color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                 fontWeight: FontWeight.w500,
               ),
               textAlign: TextAlign.center,
             ),
-            SizedBox(height: 3.h),
+            SizedBox(height: 16.h),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
@@ -145,7 +145,7 @@ class ImageUploadWidget extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
+        padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 8.h),
         decoration: BoxDecoration(
           gradient: LinearGradient(
             colors: [
@@ -155,21 +155,21 @@ class ImageUploadWidget extends StatelessWidget {
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
           ),
-          borderRadius: BorderRadius.circular(16.r),
+          borderRadius: BorderRadius.circular(14.r),
           border: Border.all(
             color: color.withOpacity(0.3),
-            width: 1.5,
+            width: 1,
           ),
           boxShadow: [
             BoxShadow(
               color: color.withOpacity(0.2),
-              blurRadius: 8,
-              offset: const Offset(0, 3),
+              blurRadius: 6,
+              offset: const Offset(0, 2),
             ),
             BoxShadow(
               color: Colors.black.withOpacity(0.05),
-              blurRadius: 6,
-              offset: const Offset(0, 2),
+              blurRadius: 4,
+              offset: const Offset(0, 1),
             ),
           ],
         ),
@@ -177,7 +177,7 @@ class ImageUploadWidget extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             Container(
-              padding: EdgeInsets.all(8.w),
+              padding: EdgeInsets.all(6.w),
               decoration: BoxDecoration(
                 gradient: LinearGradient(
                   colors: [
@@ -187,22 +187,22 @@ class ImageUploadWidget extends StatelessWidget {
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                 ),
-                borderRadius: BorderRadius.circular(12.r),
+                borderRadius: BorderRadius.circular(10.r),
                 border: Border.all(
                   color: color.withOpacity(0.3),
                   width: 1,
                 ),
               ),
-              child: Icon(icon, color: color, size: 20.sp),
+              child: Icon(icon, color: color, size: 18.sp),
             ),
-            SizedBox(height: 6.h),
+            SizedBox(height: 4.h),
             Text(
               label,
               style: TextStyle(
                 color: color,
-                fontSize: 12.sp,
+                fontSize: 11.sp,
                 fontWeight: FontWeight.w700,
-                letterSpacing: 0.3,
+                letterSpacing: 0.2,
               ),
             ),
           ],
@@ -214,7 +214,7 @@ class ImageUploadWidget extends StatelessWidget {
   Widget _buildImageDisplay(BuildContext context, ImageController controller) {
     return Container(
       width: 400.w,
-      height: 280.h,
+      height: 320.h,
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(32.r),
         boxShadow: [
